@@ -1,7 +1,4 @@
-﻿using System.IO;
-using System.IO.Compression;
-
-namespace SrcMod.Shell.Modules;
+﻿namespace SrcMod.Shell.Modules;
 
 [Module("base", false)]
 public static class BaseModule

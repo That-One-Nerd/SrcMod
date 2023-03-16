@@ -5,8 +5,10 @@ namespace SrcMod.Shell;
 public static class Tools
 {
     private static int loadingPosition = -1;
-    private static int lastBufferSize = 0;
-    private static int lastValue = -1;
+    private static int lastLoadingBufferSize = 0;
+    private static int lastLoadingValue = -1;
+
+    public static bool LoadingBarEnabled { get; private set; }
 
     public static void DisplayWithPages(IEnumerable<string> lines, ConsoleColor? color = null)
     {
@@ -77,6 +79,7 @@ public static class Tools
             Console.SetCursorPosition(oldPos.x, oldPos.y);
         }
         loadingPosition = -1;
+        LoadingBarEnabled = false;
     }
     public static void LoadingBarSet(float value, ConsoleColor? color = null)
     {
@@ -85,17 +88,18 @@ public static class Tools
         int barSize = Console.BufferWidth - left.Length - right.Length,
             filled = (int)(barSize * value);
 
-        if (filled == lastValue) return;
+        if (filled == lastLoadingValue) return;
+        lastLoadingValue = filled;
 
         Int2 oldPos = (Console.CursorLeft, Console.CursorTop);
 
         // Erase last bar.
         Console.SetCursorPosition(0, loadingPosition);
-        Console.Write(new string(' ', lastBufferSize));
+        Console.Write(new string(' ', lastLoadingBufferSize));
         Console.CursorLeft = 0;
 
         // Add new bar.
-        lastBufferSize = Console.BufferWidth;
+        lastLoadingBufferSize = Console.BufferWidth;
 
         Write(left, newLine: false);
         ConsoleColor oldFore = Console.ForegroundColor;
@@ -114,6 +118,7 @@ public static class Tools
         if (loadingPosition != -1) throw new("The loading bar has already been enabled.");
         loadingPosition = position ?? Console.CursorTop;
         LoadingBarSet(value, color);
+        LoadingBarEnabled = true;
     }
 
     public static void Write(object? message, ConsoleColor? col = null, bool newLine = true)
