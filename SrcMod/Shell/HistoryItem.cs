@@ -13,5 +13,5 @@ public struct HistoryItem
 
     public void Invoke() => action.Invoke();
 
-    public override string ToString() => $"{timestamp:MM/dd/yyyy HH:mm:ss} | {name}";
+    public override string ToString() => $"{timestamp:MM/dd/yyyy HH:mm:ss}  {name}";
 }

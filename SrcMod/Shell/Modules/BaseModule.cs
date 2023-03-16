@@ -44,7 +44,7 @@ public static class BaseModule
                     Stream writer = new FileStream(absDest, FileMode.CreateNew);
                     ZipArchive archive = new(writer, ZipArchiveMode.Create);
 
-                    archive.CreateEntryFromFile(absSource, Path.GetFileName(absSource));
+                    archive.CreateEntryFromFile(absSource, Path.GetFileName(absSource), level);
 
                     archive.Dispose();
                     writer.Dispose();
@@ -71,7 +71,7 @@ public static class BaseModule
                     for (int i = 0; i < files.Count; i++)
                     {
                         archive.CreateEntryFromFile(files[i], relative[i], level);
-                        LoadingBarSet((i + 1) / (float)files.Count, ConsoleColor.DarkMagenta);
+                        LoadingBarSet((i + 1) / (float)files.Count, ConsoleColor.DarkGreen);
                         Console.CursorLeft = 0;
                         string message = $"{relative[i]}";
                         int remainder = Console.BufferWidth - message.Length;
@@ -214,8 +214,15 @@ public static class BaseModule
     [Command("history")]
     public static void ShowHistory()
     {
-        List<string> lines = new();
-        for (int i = lines.Count - 1; i >= 0; i--) lines.Add(Program.Shell!.History[i].ToString());
+        List<string> lines = new() { " Timestamp           Description"};
+        int longestName = 0;
+        for (int i = lines.Count - 1; i >= 0; i--)
+        {
+            HistoryItem hist = Program.Shell!.History[i];
+            if (hist.name.Length > longestName) longestName = hist.name.Length;
+            lines.Add(hist.ToString());
+        }
+        lines.Insert(1, new string('-', 22 + longestName));
         DisplayWithPages(lines);
     }
 
@@ -225,6 +232,12 @@ public static class BaseModule
         if (File.Exists(path)) File.Delete(path);
         else if (Directory.Exists(path)) Directory.Delete(path);
         else throw new($"No file or directory exists at \"{path}\"");
+    }
+
+    [Command("srcmod")]
+    public static void EasterEgg()
+    {
+        Write("That's me!", ConsoleColor.Magenta);
     }
 
     [Command("quit")]
