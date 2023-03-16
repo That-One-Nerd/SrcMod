@@ -23,10 +23,10 @@ public static class TypeParsers
         if (TryParse(msg, out char resChar)) return resChar;
         if (TryParse(msg, out DateOnly dateOnly)) return dateOnly;
         if (TryParse(msg, out DateTime dateTime)) return dateTime;
-        if (TryParse(msg, out DateTime dateTimeOffset)) return dateTimeOffset;
+        if (TryParse(msg, out DateTimeOffset dateTimeOffset)) return dateTimeOffset;
         if (TryParse(msg, out Guid guid)) return guid;
         if (TryParse(msg, out TimeOnly timeOnly)) return timeOnly;
-        if (TryParse(msg, out TimeOnly timeSpan)) return timeSpan;
+        if (TryParse(msg, out TimeSpan timeSpan)) return timeSpan;
 
         return msg;
     }

@@ -44,10 +44,22 @@ public class Shell
         WorkingDirectory = Directory.GetCurrentDirectory();
 
         // Load modules and commands.
+        List<Assembly?> possibleAsms = new()
+        {
+            assembly,
+            Assembly.GetEntryAssembly(),
+            Assembly.GetCallingAssembly()
+        };
+
         LoadedModules = new();
         LoadedCommands = new();
 
-        Type[] possibleModules = assembly.GetTypes();
+        List<Type> possibleModules = new();
+        foreach (Assembly? a in possibleAsms)
+        {
+            if (a is null) continue;
+            possibleModules.AddRange(a.GetTypes().Where(x => !possibleModules.Contains(x)));
+        }
         foreach (Type t in possibleModules)
         {
             ModuleInfo? module = ModuleInfo.FromModule(t);
@@ -166,10 +178,12 @@ public class Shell
                 catch (TargetInvocationException ex)
                 {
                     Write($"[ERROR] {ex.InnerException!.Message}", ConsoleColor.Red);
+                    if (LoadingBarEnabled) LoadingBarEnd();
                 }
                 catch (Exception ex)
                 {
                     Write($"[ERROR] {ex.Message}", ConsoleColor.Red);
+                    if (LoadingBarEnabled) LoadingBarEnd();
                 }
                 return;
             }
