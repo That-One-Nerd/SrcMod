@@ -174,17 +174,23 @@ public static class BaseModule
         {
             action = delegate
             {
-                if (!File.Exists(absDest))
+                if (File.Exists(absDest))
                 {
-                    Write("Looks like the job is already completed Boss.", ConsoleColor.DarkYellow);
-                    return;
+                    FileInfo info = new(absDest);
+                    if ((info.LastWriteTime - stamp).TotalMilliseconds >= 10)
+                        throw new("The copied file has been modified and probably shouldn't be undone.");
+
+                    File.Delete(absDest);
                 }
+                else if (Directory.Exists(absDest))
+                {
+                    DirectoryInfo info = new(absDest);
+                    if ((info.LastWriteTime - stamp).TotalMilliseconds >= 10)
+                        throw new("The copied directory has been modified and probably shouldn't be undone.");
 
-                FileInfo info = new(absDest);
-                if ((info.LastWriteTime - stamp).TotalMilliseconds >= 10)
-                    throw new("The copied file or folder has been modified and probably shouldn't be undone.");
-
-                File.Delete(absDest);
+                    Directory.Delete(absDest, true);
+                }
+                else Write("Looks like the job is already completed Boss.", ConsoleColor.DarkYellow);
             },
             name = $"Copied a file or folder from \"{absSource}\" to \"{absDest}\""
         });
@@ -340,17 +346,29 @@ public static class BaseModule
         {
             action = delegate
             {
-                if (!File.Exists(absDest))
+                if (File.Exists(absDest))
                 {
-                    Write("Looks like the job is already completed Boss.", ConsoleColor.DarkYellow);
-                    return;
+                    FileInfo info = new(absDest);
+                    if ((info.LastWriteTime - stamp).TotalMilliseconds >= 10)
+                        throw new("The copied file has been modified and probably shouldn't be undone.");
+
+                    if (File.Exists(absSource)) throw new($"A file already exists at {absSource} and can't " +
+                                                          "be overriden.");
+
+                    File.Move(absDest, absSource);
                 }
+                else if (Directory.Exists(absDest))
+                {
+                    DirectoryInfo info = new(absDest);
+                    if ((info.LastWriteTime - stamp).TotalMilliseconds >= 10)
+                        throw new("The copied directory has been modified and probably shouldn't be undone.");
 
-                FileInfo info = new(absDest);
-                if ((info.LastWriteTime - stamp).TotalMilliseconds >= 10)
-                    throw new("The moved file or folder has been modified and probably shouldn't be undone.");
+                    if (Directory.Exists(absSource)) throw new($"A directory already exists at {absSource} and " +
+                                                          "can't be overriden.");
 
-                File.Delete(absDest);
+                    Directory.Move(absDest, absSource);
+                }
+                else Write("Looks like the job is already completed Boss.", ConsoleColor.DarkYellow);
             },
             name = $"Moved a file or folder from \"{absSource}\" to \"{absDest}\""
         });
@@ -360,7 +378,7 @@ public static class BaseModule
     public static void ReallyDelete(string path)
     {
         if (File.Exists(path)) File.Delete(path);
-        else if (Directory.Exists(path)) Directory.Delete(path);
+        else if (Directory.Exists(path)) Directory.Delete(path, true);
         else throw new($"No file or directory exists at \"{path}\"");
     }
 
