@@ -6,3 +6,6 @@ SrcMod/.vs/
 # Compiled Files
 SrcMod/Compiled
 SrcMod/Shell/obj/
+
+# Personal Stuff
+TODO.md
