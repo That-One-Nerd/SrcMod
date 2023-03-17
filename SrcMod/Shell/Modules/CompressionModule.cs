@@ -3,6 +3,7 @@
 [Module("compress")]
 public static class CompressionModule
 {
+    [Command("zip")]
     public static void CompressZip(string source, string? destination = null,
         CompressionLevel level = CompressionLevel.Optimal)
     {
@@ -75,19 +76,19 @@ public static class CompressionModule
         {
             action = delegate
             {
-                if (!File.Exists(absDest))
+                if (!File.Exists(destination))
                 {
                     Write("Looks like the job is already completed Boss.", ConsoleColor.DarkYellow);
                     return;
                 }
 
-                FileInfo info = new(absDest);
+                FileInfo info = new(destination);
                 if ((info.LastWriteTime - stamp).TotalMilliseconds >= 10)
                     throw new("The archive has been modified and probably shouldn't be undone.");
 
-                File.Delete(absDest);
+                File.Delete(destination);
             },
-            name = $"Compressed a file or folder into a {type} archive located at \"{destination}\""
+            name = $"Compressed a file or folder into a zip archive located at \"{destination}\""
         });
     }
 }
