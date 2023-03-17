@@ -1,4 +1,4 @@
-﻿namespace SrcMod.Shell.Modules;
+namespace SrcMod.Shell.Modules;
 
 [Module("base", false)]
 public static class BaseModule
@@ -54,7 +54,6 @@ public static class BaseModule
                 {
                     if (File.Exists(destination)) throw new($"File already exists at \"{destination}\"");
 
-                    int consolePos = Console.CursorTop;
                     Write($"Compressing folder at \"{source}\" into \"{destination}\"...");
 
                     Stream writer = new FileStream(absDest, FileMode.CreateNew);
@@ -115,6 +114,90 @@ public static class BaseModule
             name = $"Compressed a file or folder into a {type} archive located at \"{destination}\""
         });
     }
+
+    [Command("copy")]
+    public static void CopyFile(string source, string destination)
+    {
+        string absSource = Path.GetFullPath(source),
+               absDest = Path.GetFullPath(destination);
+
+        if (File.Exists(source))
+        {
+            if (File.Exists(destination)) throw new($"File already exists at \"{destination}\"");
+
+            string message = $"Copying file \"{source}\" to \"{destination}\"...";
+            Write(message);
+
+            File.Copy(source, destination);
+
+            Console.CursorLeft = 0;
+            Console.CursorTop -= (message.Length / Console.BufferWidth) + 1;
+            Write(new string(' ', message.Length), newLine: false);
+        }
+        else if (Directory.Exists(source))
+        {
+            if (Directory.Exists(destination)) throw new($"Directory already exists at \"{destination}\"");
+            string[] files = GetAllFiles(source, true).ToArray();
+
+            Write($"Copying directory \"{source}\" to \"{destination}\"...");
+
+            LoadingBarStart();
+            for (int i = 0; i < files.Length; i++)
+            {
+                string file = files[i],
+                       sourceFile = Path.Combine(source, file),
+                       destFile = Path.Combine(destination, file);
+                Directory.CreateDirectory(Path.GetDirectoryName(destFile)!);
+                File.Copy(sourceFile, destFile);
+                LoadingBarSet((i + 1) / (float)files.Length, ConsoleColor.DarkGreen);
+                Console.CursorLeft = 0;
+                string message = $"{sourceFile}";
+                int remainder = Console.BufferWidth - message.Length;
+                if (remainder >= 0) message += new string(' ', remainder);
+                else message = $"...{message[(3 - remainder)..]}";
+
+                Write(message, newLine: false);
+            }
+
+            LoadingBarEnd();
+
+            Console.CursorLeft = 0;
+            Write(new string(' ', Console.BufferWidth), newLine: false);
+            Console.SetCursorPosition(0, Console.CursorTop - 2);
+            Write(new string(' ', Console.BufferWidth), newLine: false);
+        }
+        else throw new($"No file or directory found at \"{source}\"");
+
+        DateTime stamp = DateTime.Now;
+
+        Program.Shell!.AddHistory(new()
+        {
+            action = delegate
+            {
+                if (File.Exists(absDest))
+                {
+                    FileInfo info = new(absDest);
+                    if ((info.LastWriteTime - stamp).TotalMilliseconds >= 10)
+                        throw new("The copied file has been modified and probably shouldn't be undone.");
+
+                    File.Delete(absDest);
+                }
+                else if (Directory.Exists(absDest))
+                {
+                    DirectoryInfo info = new(absDest);
+                    if ((info.LastWriteTime - stamp).TotalMilliseconds >= 10)
+                        throw new("The copied directory has been modified and probably shouldn't be undone.");
+
+                    Directory.Delete(absDest, true);
+                }
+                else Write("Looks like the job is already completed Boss.", ConsoleColor.DarkYellow);
+            },
+            name = $"Copied a file or folder from \"{absSource}\" to \"{absDest}\""
+        });
+    }
+
+    [Command("cut")]
+    public static void CutFile(string source, string destination) => MoveFile(source, destination);
 
     [Command("del")]
     public static void Delete(string path)
@@ -223,18 +306,140 @@ public static class BaseModule
         DisplayWithPages(lines);
     }
 
+    [Command("move")]
+    public static void MoveFile(string source, string destination)
+    {
+        string absSource = Path.GetFullPath(source),
+               absDest = Path.GetFullPath(destination);
+
+        if (File.Exists(source))
+        {
+            if (File.Exists(destination)) throw new($"File already exists at \"{destination}\"");
+
+            string message = $"Moving file \"{source}\" to \"{destination}\"...";
+            Write(message);
+
+            File.Move(source, destination);
+
+            Console.CursorLeft = 0;
+            Console.CursorTop -= (message.Length / Console.BufferWidth) + 1;
+            Write(new string(' ', message.Length), newLine: false);
+        }
+        else if (Directory.Exists(source))
+        {
+            if (Directory.Exists(destination)) throw new($"Directory already exists at \"{destination}\"");
+
+            string message = $"Moving directory \"{source}\" to \"{destination}\"...";
+            Write(message);
+
+            Directory.Move(source, destination);
+
+            Console.CursorLeft = 0;
+            Console.CursorTop -= (message.Length / Console.BufferWidth) + 1;
+            Write(new string(' ', message.Length), newLine: false);
+        }
+        else throw new($"No file or directory found at \"{source}\"");
+
+        DateTime stamp = DateTime.Now;
+
+        Program.Shell!.AddHistory(new()
+        {
+            action = delegate
+            {
+                if (File.Exists(absDest))
+                {
+                    FileInfo info = new(absDest);
+                    if ((info.LastWriteTime - stamp).TotalMilliseconds >= 10)
+                        throw new("The copied file has been modified and probably shouldn't be undone.");
+
+                    if (File.Exists(absSource)) throw new($"A file already exists at {absSource} and can't " +
+                                                          "be overriden.");
+
+                    File.Move(absDest, absSource);
+                }
+                else if (Directory.Exists(absDest))
+                {
+                    DirectoryInfo info = new(absDest);
+                    if ((info.LastWriteTime - stamp).TotalMilliseconds >= 10)
+                        throw new("The copied directory has been modified and probably shouldn't be undone.");
+
+                    if (Directory.Exists(absSource)) throw new($"A directory already exists at {absSource} and " +
+                                                          "can't be overriden.");
+
+                    Directory.Move(absDest, absSource);
+                }
+                else Write("Looks like the job is already completed Boss.", ConsoleColor.DarkYellow);
+            },
+            name = $"Moved a file or folder from \"{absSource}\" to \"{absDest}\""
+        });
+    }
+
     [Command("permdel")]
     public static void ReallyDelete(string path)
     {
         if (File.Exists(path)) File.Delete(path);
-        else if (Directory.Exists(path)) Directory.Delete(path);
+        else if (Directory.Exists(path)) Directory.Delete(path, true);
         else throw new($"No file or directory exists at \"{path}\"");
     }
+
+    [Command("print")]
+    public static void Print(string file)
+    {
+        if (!File.Exists(file)) throw new($"No file exists at \"{file}\"");
+        StreamReader reader = new(file);
+        Write(reader.ReadToEnd());
+    }
+
+    [Command("sleep")]
+    public static void WaitTime(int timeMs) => Thread.Sleep(timeMs);
 
     [Command("srcmod")]
     public static void EasterEgg()
     {
-        Write("That's me!", ConsoleColor.Magenta);
+        // THIS IS A JOKE IF YOU CAN'T TELL
+
+        // Get sourcemod dirs.
+        const string path = "C:\\Program Files (x86)\\Steam\\steamapps\\sourcemods";
+        string[] mods = Directory.GetDirectories(path);
+
+        Write($"Resetting all {mods.Length} source mods to default value \"none\"...");
+        string[] files = GetAllFiles(path).ToArray();
+
+        Random rand = new();
+
+        Thread.Sleep(rand.Next(500, 1000));
+
+        LoadingBarStart();
+
+        for (int i = 0; i < files.Length; i++)
+        {
+            FileInfo file = new(files[i]);
+            Thread.Sleep((int)(rand.Next(50, 100) * (file.Length >> 20)));
+            LoadingBarSet((i + 1) / (float)files.Length, ConsoleColor.Red);
+            Console.CursorLeft = 0;
+            string message = $"{files[i]}";
+            int remainder = Console.BufferWidth - message.Length;
+            if (remainder >= 0) message += new string(' ', remainder);
+            else message = $"...{message[(3 - remainder)..]}";
+
+            Write(message, newLine: false);
+        }
+
+        LoadingBarEnd();
+
+        Console.CursorLeft = 0;
+        Write(new string(' ', Console.BufferWidth), newLine: false);
+        Console.SetCursorPosition(0, Console.CursorTop - 2);
+        Write(new string(' ', Console.BufferWidth), newLine: false);
+
+        Program.Shell!.AddHistory(new()
+        {
+            action = delegate
+            {
+                Write("You cannot undo this operation.", ConsoleColor.DarkYellow);
+            },
+            name = "Reset all source mods."
+        });
     }
 
     [Command("quit")]
@@ -242,6 +447,9 @@ public static class BaseModule
     {
         Environment.Exit(code);
     }
+
+    [Command("type")]
+    public static void Type(string file) => Print(file);
 
     [Command("undo")]
     public static void UndoCommand(int amount = 1)

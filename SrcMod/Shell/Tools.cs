@@ -1,6 +1,4 @@
-﻿using System.Net.Http.Headers;
-
-namespace SrcMod.Shell;
+﻿namespace SrcMod.Shell;
 
 public static class Tools
 {
@@ -55,11 +53,19 @@ public static class Tools
         }
     }
 
-    public static IEnumerable<string> GetAllFiles(string directory)
+    public static IEnumerable<string> GetAllFiles(string directory, bool local = false) =>
+        GetAllFiles(directory, local, directory);
+    private static IEnumerable<string> GetAllFiles(string directory, bool local, string initialPath)
     {
         List<string> allFiles = new();
-        foreach (string f in Directory.GetFiles(directory)) allFiles.Add(Path.GetFullPath(f));
-        foreach (string dir in Directory.GetDirectories(directory)) allFiles.AddRange(GetAllFiles(dir));
+        foreach (string f in Directory.GetFiles(directory))
+        {
+            string path = Path.GetFullPath(f);
+            if (local) path = Path.GetRelativePath(initialPath, path);
+            allFiles.Add(path);
+        }
+        foreach (string dir in Directory.GetDirectories(directory))
+            allFiles.AddRange(GetAllFiles(dir, local, initialPath));
         return allFiles;
     }
 
