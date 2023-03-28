@@ -1,4 +1,6 @@
-﻿namespace SrcMod.Shell;
+﻿using System.Text;
+
+namespace SrcMod.Shell;
 
 public static class Tools
 {
@@ -136,5 +138,19 @@ public static class Tools
         else Console.Write(message);
 
         Console.ForegroundColor = prevCol;
+    }
+
+    public static bool ValidateUnsafe()
+    {
+        Write("You are about to execute an unsafe command.\nProceed? > ", ConsoleColor.DarkYellow, false);
+
+        Console.ForegroundColor = ConsoleColor.Yellow;
+        Console.CursorVisible = true;
+        string result = Console.ReadLine()!.Trim().ToLower();
+        Console.CursorVisible = false;
+        Console.ResetColor();
+
+        return result == "y" || result == "yes" || result == "t" ||
+               result == "true" || result == "p" || result == "proceed";
     }
 }
