@@ -7,8 +7,13 @@ public static class CompressionModule
     public static void CompressZip(string source, string? destination = null,
         CompressionLevel level = CompressionLevel.Optimal, string comment = "")
     {
-        destination ??= Path.Combine(Path.GetDirectoryName(Path.GetFullPath(source))!,
-                                     $"{Path.GetFileNameWithoutExtension(source)}.zip");
+        if (destination is null)
+        {
+            string full = Path.GetFullPath(source);
+            string name = Path.GetFileNameWithoutExtension(full);
+            string folder = Program.Shell!.WorkingDirectory;
+            destination ??= $"{folder}\\{name}.zip";
+        }
 
         string absSource = Path.GetFullPath(source),
                localDest = Path.GetRelativePath(Program.Shell!.WorkingDirectory, destination);
@@ -44,13 +49,34 @@ public static class CompressionModule
 
             List<string> files = new(GetAllFiles(absSource)),
                          relative = new();
-            foreach (string f in files) relative.Add(Path.GetRelativePath(absSource, f));
+            for (int i = 0; i < files.Count; i++)
+            {
+                string f = files[i];
+                if (f.Trim().ToLower() == destination.Trim().ToLower())
+                {
+                    files.RemoveAt(i);
+                    i--;
+                    continue;
+                }
+                relative.Add(Path.GetRelativePath(absSource, f));
+            }
+
+            int failed = 0;
 
             LoadingBarStart();
             for (int i = 0; i < files.Count; i++)
             {
-                archive.CreateEntryFromFile(files[i], relative[i], level);
-                LoadingBarSet((i + 1) / (float)files.Count, ConsoleColor.DarkGreen);
+                bool failedThisTime = false;
+                try
+                {
+                    archive.CreateEntryFromFile(files[i], relative[i], level);
+                }
+                catch
+                {
+                    failedThisTime = true;
+                    failed++;
+                }
+                LoadingBarSet((i + 1) / (float)files.Count, failedThisTime ? ConsoleColor.Red : ConsoleColor.DarkGreen); ;
                 Console.CursorLeft = 0;
                 string message = $"{relative[i]}";
                 int remainder = Console.BufferWidth - message.Length;
@@ -69,6 +95,14 @@ public static class CompressionModule
             Write(new string(' ', Console.BufferWidth), newLine: false);
             Console.SetCursorPosition(0, Console.CursorTop - 2);
             Write(new string(' ', Console.BufferWidth), newLine: false);
+
+            if (failed > 0)
+            {
+                Console.CursorLeft = 0;
+                Console.CursorTop--;
+                Write($"{failed} file{(failed == 1 ? " has" : "s have")} been ignored due to an error.",
+                      ConsoleColor.DarkYellow);
+            }
         }
         else throw new("No file or directory located at \"source\"");
 

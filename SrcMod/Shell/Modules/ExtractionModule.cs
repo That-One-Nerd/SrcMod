@@ -8,8 +8,14 @@ public static class ExtractionModule
     {
         if (!File.Exists(source)) throw new($"No file exists at \"{source}\".");
 
-        destination ??= Path.GetDirectoryName(Path.GetFullPath(source));
-        if (destination is null) throw new("Error detecting destination path.");
+        if (destination is null)
+        {
+            string full = Path.GetFullPath(source);
+            string folder = Program.Shell!.WorkingDirectory;
+            string name = Path.GetFileNameWithoutExtension(full);
+
+            destination = $"{folder}\\{name}";
+        }
 
         if (!Directory.Exists(destination)) Directory.CreateDirectory(destination);
 
