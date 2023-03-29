@@ -4,7 +4,7 @@ public class Shell
 {
     public const string Author = "That_One_Nerd";
     public const string Name = "SrcMod";
-    public const string Version = "Alpha 0.3.0";
+    public const string Version = "Alpha 0.3";
 
     public readonly string? ShellDirectory;
 
@@ -170,10 +170,13 @@ public class Shell
                 if (command.NameId.Trim().ToLower() != commandName) continue;
                 int start = module.NameIsPrefix ? 2 : 1;
                 string[] args = parts.GetRange(start, parts.Count - start).ToArray();
-                
+
+#if RELEASE
                 try
                 {
+#endif
                     command.Invoke(args);
+#if RELEASE
                 }
                 catch (TargetInvocationException ex)
                 {
@@ -185,6 +188,7 @@ public class Shell
                     Write($"[ERROR] {ex.Message}", ConsoleColor.Red);
                     if (LoadingBarEnabled) LoadingBarEnd();
                 }
+#endif
                 return;
             }
         }

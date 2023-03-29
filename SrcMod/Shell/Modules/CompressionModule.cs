@@ -3,6 +3,59 @@
 [Module("compress")]
 public static class CompressionModule
 {
+    [Command("gz")]
+    [Command("gzip")]
+    public static void CompressGzip(string source, string? destination = null,
+        CompressionLevel level = CompressionLevel.Optimal)
+    {
+        if (destination is null)
+        {
+            string full = Path.GetFullPath(source);
+            string name = Path.GetFileNameWithoutExtension(full);
+            string folder = Program.Shell!.WorkingDirectory;
+            destination ??= $"{folder}\\{name}.gz";
+        }
+
+        string absSource = Path.GetFullPath(source),
+               localDest = Path.GetRelativePath(Program.Shell!.WorkingDirectory, destination);
+
+        if (File.Exists(source))
+        {
+            if (File.Exists(destination)) throw new($"File already exists at \"{localDest}\"");
+            string message = $"Compressing file at \"{source}\" into \"{localDest}\"...";
+            Write(message);
+
+            FileStream writer = new(localDest, FileMode.CreateNew);
+            FileStream reader = new(absSource, FileMode.Open);
+            GZipStream gzip = new(writer, level);
+
+            LoadingBarStart();
+
+            const int bufferSize = 1024;
+            byte[] buffer = new byte[bufferSize];
+            for (int i = 0; i < reader.Length; i += bufferSize)
+            {
+                int size = reader.Read(buffer, 0, bufferSize);
+                gzip.Write(buffer, 0, size);
+                gzip.Flush();
+
+                LoadingBarSet((float)i / gzip.Length, ConsoleColor.Magenta);
+            }
+
+            LoadingBarEnd();
+
+            gzip.Close();
+            reader.Close();
+            writer.Close();
+
+            Console.CursorLeft = 0;
+            Console.CursorTop -= (message.Length / Console.BufferWidth) + 1;
+            Write(new string(' ', message.Length), newLine: false);
+        }
+        else if (Directory.Exists(source)) throw new("The GZip format can only compress 1 file.");
+        else throw new("No file located at \"source\"");
+    }
+
     [Command("zip")]
     public static void CompressZip(string source, string? destination = null,
         CompressionLevel level = CompressionLevel.Optimal, string comment = "")
@@ -24,7 +77,7 @@ public static class CompressionModule
             string message = $"Compressing file at \"{source}\" into \"{localDest}\"...";
             Write(message);
 
-            Stream writer = new FileStream(destination, FileMode.CreateNew);
+            FileStream writer = new(destination, FileMode.CreateNew);
             ZipArchive archive = new(writer, ZipArchiveMode.Create);
             if (!string.IsNullOrWhiteSpace(comment)) archive.Comment = comment;
 
@@ -43,7 +96,7 @@ public static class CompressionModule
 
             Write($"Compressing folder at \"{source}\" into \"{localDest}\"...");
 
-            Stream writer = new FileStream(destination, FileMode.CreateNew);
+            FileStream writer = new(destination, FileMode.CreateNew);
             ZipArchive archive = new(writer, ZipArchiveMode.Create);
             if (!string.IsNullOrWhiteSpace(comment)) archive.Comment = comment;
 
