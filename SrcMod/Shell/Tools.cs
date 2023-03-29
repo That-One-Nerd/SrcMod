@@ -7,6 +7,8 @@ public static class Tools
     private static int loadingPosition = -1;
     private static int lastLoadingBufferSize = 0;
     private static int lastLoadingValue = -1;
+    private static float loadingBarValue = 0;
+    private static ConsoleColor loadingBarColor = Console.ForegroundColor;
 
     public static bool LoadingBarEnabled { get; private set; }
 
@@ -101,6 +103,9 @@ public static class Tools
 
         Int2 oldPos = (Console.CursorLeft, Console.CursorTop);
 
+        loadingBarValue = value;
+        loadingBarColor = color ?? Console.ForegroundColor;
+
         // Erase last bar.
         Console.SetCursorPosition(0, loadingPosition);
         Console.Write(new string(' ', lastLoadingBufferSize));
@@ -119,14 +124,20 @@ public static class Tools
         Write(right, newLine: false);
 
         if (oldPos.y == Console.CursorTop) oldPos.y++;
+        while (oldPos.y >= Console.BufferHeight)
+        {
+            Console.WriteLine();
+            oldPos.y--;
+            loadingPosition--;
+        }
         Console.SetCursorPosition(oldPos.x, oldPos.y);
     }
     public static void LoadingBarStart(float value = 0, int? position = null, ConsoleColor? color = null)
     {
         if (loadingPosition != -1) throw new("The loading bar has already been enabled.");
         loadingPosition = position ?? Console.CursorTop;
-        LoadingBarSet(value, color);
         LoadingBarEnabled = true;
+        LoadingBarSet(value, color);
     }
 
     public static void Write(object? message, ConsoleColor? col = null, bool newLine = true)
@@ -138,6 +149,12 @@ public static class Tools
         else Console.Write(message);
 
         Console.ForegroundColor = prevCol;
+
+        if (newLine && LoadingBarEnabled && Console.CursorTop >= Console.BufferHeight - 1)
+        {
+            loadingPosition--;
+            LoadingBarSet(loadingBarValue, loadingBarColor);
+        }
     }
 
     public static bool ValidateUnsafe()

@@ -17,26 +17,37 @@ public class CommandInfo
         RequiredParameters = 0;
     }
 
-    public static CommandInfo? FromMethod(ModuleInfo parentModule, MethodInfo info)
+    public static CommandInfo[] FromMethod(ModuleInfo parentModule, MethodInfo info)
     {
-        CommandAttribute? attribute = info.GetCustomAttribute<CommandAttribute>();
-        if (attribute is null) return null;
+        // This is a little redundant as we're duplicating a bunch of info,
+        // but honestly, it isn't too bad. Maybe there will be an improvement
+        // in the future, maybe not. But not for a while because this works.
 
-        if (info.ReturnType != typeof(void)) return null;
+        if (info.ReturnType != typeof(void)) return Array.Empty<CommandInfo>();
         ParameterInfo[] param = info.GetParameters();
 
         int required = 0;
         while (required < param.Length && !param[required].IsOptional) required++;
 
-        return new()
+        List<CommandInfo> commands = new();
+
+        CommandAttribute[] attributes = info.GetCustomAttributes<CommandAttribute>().ToArray();
+        if (attributes.Length <= 0) return Array.Empty<CommandInfo>();
+
+        foreach (CommandAttribute attribute in attributes)
         {
-            Method = info,
-            Module = parentModule,
-            Name = info.Name,
-            NameId = attribute.NameId,
-            Parameters = param,
-            RequiredParameters = required
-        };
+            commands.Add(new()
+            {
+                Method = info,
+                Module = parentModule,
+                Name = info.Name,
+                NameId = attribute.NameId,
+                Parameters = param,
+                RequiredParameters = required
+            });
+        }
+
+        return commands.ToArray();
     }
 
     public void Invoke(params string[] args)

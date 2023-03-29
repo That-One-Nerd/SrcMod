@@ -18,7 +18,7 @@ public class ModuleInfo
         NameIsPrefix = true;
     }
 
-    public static ModuleInfo? FromModule(Type info)
+    public static ModuleInfo? FromType(Type info)
     {
         ModuleAttribute? attribute = info.GetCustomAttribute<ModuleAttribute>();
         if (attribute is null) return null;
@@ -37,9 +37,9 @@ public class ModuleInfo
         List<CommandInfo> commands = new();
         foreach (MethodInfo method in info.GetMethods())
         {
-            CommandInfo? cmd = CommandInfo.FromMethod(module, method);
-            if (cmd is null) continue;
-            commands.Add(cmd);
+            CommandInfo[] cmds = CommandInfo.FromMethod(module, method);
+            if (cmds.Length <= 0) continue;
+            commands.AddRange(cmds);
         }
 
         module.Commands.AddRange(commands);

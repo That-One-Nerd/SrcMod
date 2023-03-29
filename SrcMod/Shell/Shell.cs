@@ -4,7 +4,7 @@ public class Shell
 {
     public const string Author = "That_One_Nerd";
     public const string Name = "SrcMod";
-    public const string Version = "Alpha 0.1.0";
+    public const string Version = "Alpha 0.2.2";
 
     public readonly string? ShellDirectory;
 
@@ -62,7 +62,7 @@ public class Shell
         }
         foreach (Type t in possibleModules)
         {
-            ModuleInfo? module = ModuleInfo.FromModule(t);
+            ModuleInfo? module = ModuleInfo.FromType(t);
             if (module is not null)
             {
                 LoadedModules.Add(module);
