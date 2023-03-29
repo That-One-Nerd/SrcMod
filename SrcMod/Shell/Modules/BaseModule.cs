@@ -100,9 +100,6 @@ public static class BaseModule
         });
     }
 
-    [Command("cut")]
-    public static void CutFile(string source, string destination) => MoveFile(source, destination);
-
     [Command("del")]
     public static void Delete(string path)
     {
@@ -189,9 +186,6 @@ public static class BaseModule
     [Command("echo")]
     public static void Echo(string msg) => Write(msg);
 
-    [Command("exit")]
-    public static void ExitShell(int code = 0) => QuitShell(code);
-
     [Command("explorer")]
     public static void OpenExplorer(string path = ".") => Process.Start("explorer.exe", Path.GetFullPath(path));
 
@@ -210,6 +204,7 @@ public static class BaseModule
         DisplayWithPages(lines);
     }
 
+    [Command("cut")]
     [Command("move")]
     public static void MoveFile(string source, string destination)
     {
@@ -287,6 +282,7 @@ public static class BaseModule
     }
 
     [Command("print")]
+    [Command("type")]
     public static void Print(string file)
     {
         if (!File.Exists(file)) throw new($"No file exists at \"{file}\"");
@@ -346,14 +342,12 @@ public static class BaseModule
         });
     }
 
+    [Command("exit")]
     [Command("quit")]
     public static void QuitShell(int code = 0)
     {
         Environment.Exit(code);
     }
-
-    [Command("type")]
-    public static void Type(string file) => Print(file);
 
     [Command("undo")]
     public static void UndoCommand(int amount = 1)
