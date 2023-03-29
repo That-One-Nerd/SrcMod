@@ -5,7 +5,7 @@ public static class CompressionModule
 {
     [Command("zip")]
     public static void CompressZip(string source, string? destination = null,
-        CompressionLevel level = CompressionLevel.Optimal)
+        CompressionLevel level = CompressionLevel.Optimal, string comment = "")
     {
         destination ??= Path.Combine(Path.GetDirectoryName(Path.GetFullPath(source))!,
                                      $"{Path.GetFileNameWithoutExtension(source)}.zip");
@@ -20,7 +20,10 @@ public static class CompressionModule
             Write(message);
 
             Stream writer = new FileStream(destination, FileMode.CreateNew);
-            ZipArchive archive = new(writer, ZipArchiveMode.Create);
+            ZipArchive archive = new(writer, ZipArchiveMode.Create)
+            {
+                Comment = comment
+            };
 
             archive.CreateEntryFromFile(absSource, Path.GetFileName(absSource), level);
 
