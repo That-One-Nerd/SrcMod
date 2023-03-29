@@ -342,6 +342,21 @@ public static class BaseModule
         });
     }
 
+    [Command("testing")]
+    public static void Testing()
+    {
+        LoadingBarStart();
+        int count = 0;
+        for (float f = 0; f <= 1; f += 0.01f)
+        {
+            LoadingBarSet(f);
+            count++;
+            if (count % 10 == 0) Write("wowie!");
+            Thread.Sleep(15);
+        }
+        LoadingBarEnd();
+    }
+
     [Command("exit")]
     [Command("quit")]
     public static void QuitShell(int code = 0)
