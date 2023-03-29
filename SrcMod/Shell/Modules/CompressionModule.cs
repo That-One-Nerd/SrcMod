@@ -5,14 +5,14 @@ public static class CompressionModule
 {
     [Command("gz")]
     [Command("gzip")]
-    public static void CompressGzip(string source, string? destination = null,
+    public static void CompressGZip(string source, string? destination = null,
         CompressionLevel level = CompressionLevel.Optimal)
     {
         if (destination is null)
         {
-            string full = Path.GetFullPath(source);
-            string name = Path.GetFileNameWithoutExtension(full);
-            string folder = Program.Shell!.WorkingDirectory;
+            string full = Path.GetFullPath(source),
+                   name = Path.GetFileName(full),
+                   folder = Program.Shell!.WorkingDirectory;
             destination ??= $"{folder}\\{name}.gz";
         }
 
@@ -25,21 +25,21 @@ public static class CompressionModule
             string message = $"Compressing file at \"{source}\" into \"{localDest}\"...";
             Write(message);
 
-            FileStream writer = new(localDest, FileMode.CreateNew);
-            FileStream reader = new(absSource, FileMode.Open);
+            FileStream writer = new(localDest, FileMode.CreateNew),
+                       reader = new(absSource, FileMode.Open);
             GZipStream gzip = new(writer, level);
 
             LoadingBarStart();
 
-            const int bufferSize = 1024;
+            int bufferSize = Mathf.Clamp((int)reader.Length / Console.BufferWidth, 1024 * 1024, 128 * 1024 * 1024);
             byte[] buffer = new byte[bufferSize];
-            for (int i = 0; i < reader.Length; i += bufferSize)
+            for (long i = 0; i < reader.Length; i += bufferSize)
             {
                 int size = reader.Read(buffer, 0, bufferSize);
                 gzip.Write(buffer, 0, size);
                 gzip.Flush();
 
-                LoadingBarSet((float)i / gzip.Length, ConsoleColor.Magenta);
+                LoadingBarSet((float)i / reader.Length, ConsoleColor.DarkGreen);
             }
 
             LoadingBarEnd();
@@ -49,7 +49,7 @@ public static class CompressionModule
             writer.Close();
 
             Console.CursorLeft = 0;
-            Console.CursorTop -= (message.Length / Console.BufferWidth) + 1;
+            Console.CursorTop -= (message.Length / Console.BufferWidth) + 2;
             Write(new string(' ', message.Length), newLine: false);
         }
         else if (Directory.Exists(source)) throw new("The GZip format can only compress 1 file.");
@@ -62,9 +62,9 @@ public static class CompressionModule
     {
         if (destination is null)
         {
-            string full = Path.GetFullPath(source);
-            string name = Path.GetFileNameWithoutExtension(full);
-            string folder = Program.Shell!.WorkingDirectory;
+            string full = Path.GetFullPath(source),
+                   name = Path.GetFileNameWithoutExtension(full),
+                   folder = Program.Shell!.WorkingDirectory;
             destination ??= $"{folder}\\{name}.zip";
         }
 
@@ -152,7 +152,6 @@ public static class CompressionModule
             if (failed > 0)
             {
                 Console.CursorLeft = 0;
-                Console.CursorTop--;
                 Write($"{failed} file{(failed == 1 ? " has" : "s have")} been ignored due to an error.",
                       ConsoleColor.DarkYellow);
             }
