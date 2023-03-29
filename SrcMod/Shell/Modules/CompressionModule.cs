@@ -20,10 +20,8 @@ public static class CompressionModule
             Write(message);
 
             Stream writer = new FileStream(destination, FileMode.CreateNew);
-            ZipArchive archive = new(writer, ZipArchiveMode.Create)
-            {
-                Comment = comment
-            };
+            ZipArchive archive = new(writer, ZipArchiveMode.Create);
+            if (!string.IsNullOrWhiteSpace(comment)) archive.Comment = comment;
 
             archive.CreateEntryFromFile(absSource, Path.GetFileName(absSource), level);
 
@@ -42,6 +40,7 @@ public static class CompressionModule
 
             Stream writer = new FileStream(destination, FileMode.CreateNew);
             ZipArchive archive = new(writer, ZipArchiveMode.Create);
+            if (!string.IsNullOrWhiteSpace(comment)) archive.Comment = comment;
 
             List<string> files = new(GetAllFiles(absSource)),
                          relative = new();
