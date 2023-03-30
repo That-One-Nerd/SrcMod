@@ -134,10 +134,16 @@ public static class ExtractionModule
         if (!Directory.Exists(destination)) Directory.CreateDirectory(destination);
 
         FileStream reader = new(source, FileMode.Open);
-        SevenZipArchive zip = SevenZipArchive.Open(source);
+        SevenZipArchive zip = SevenZipArchive.Open(reader);
 
         IReader data = zip.ExtractAllEntries();
-        data.WriteAllToDirectory(destination);
+        data.WriteAllToDirectory(destination, new()
+        {
+            ExtractFullPath = true,
+            Overwrite = true,
+            PreserveAttributes = true,
+            PreserveFileTime = true
+        });
 
         zip.Dispose();
         reader.Dispose();
