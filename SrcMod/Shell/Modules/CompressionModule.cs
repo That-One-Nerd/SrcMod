@@ -32,27 +32,14 @@ public static class CompressionModule
                        reader = new(absSource, FileMode.Open);
             GZipStream gzip = new(writer, level);
 
-            LoadingBarStart();
-
-            int bufferSize = Mathf.Clamp((int)reader.Length / Console.BufferWidth, 1024 * 1024, 128 * 1024 * 1024);
-            byte[] buffer = new byte[bufferSize];
-            for (long i = 0; i < reader.Length; i += bufferSize)
-            {
-                int size = reader.Read(buffer, 0, bufferSize);
-                gzip.Write(buffer, 0, size);
-                gzip.Flush();
-
-                LoadingBarSet((float)i / reader.Length, ConsoleColor.DarkGreen);
-            }
-
-            LoadingBarEnd();
+            reader.CopyTo(gzip);
 
             gzip.Close();
             reader.Close();
             writer.Close();
 
             Console.CursorLeft = 0;
-            Console.CursorTop -= (message.Length / Console.BufferWidth) + 2;
+            Console.CursorTop -= (message.Length / Console.BufferWidth) + 1;
             Write(new string(' ', message.Length), newLine: false);
         }
         else if (Directory.Exists(source)) throw new("The GZip format can only compress 1 file.");

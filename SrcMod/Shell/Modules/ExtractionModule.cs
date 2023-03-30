@@ -29,21 +29,7 @@ public static class ExtractionModule
                    reader = new(absSource, FileMode.Open);
         GZipStream gzip = new(reader, CompressionMode.Decompress);
 
-        LoadingBarStart();
-
-        int bufferSize = Mathf.Clamp((int)reader.Length / Console.BufferWidth, 1024 * 1024, 128 * 1024 * 1024);
-        byte[] buffer = new byte[bufferSize];
-        int i = 0;
-        int size;
-        while ((size = gzip.Read(buffer, i, bufferSize)) > 0)
-        {
-            writer.Write(buffer, 0, size);
-            writer.Flush();
-
-            LoadingBarSet((float)i / reader.Length, ConsoleColor.DarkGreen);
-        }
-
-        LoadingBarEnd();
+        gzip.CopyTo(writer);
 
         gzip.Close();
         reader.Close();
@@ -51,7 +37,6 @@ public static class ExtractionModule
 
         Console.CursorLeft = 0;
         Console.CursorTop -= (message.Length / Console.BufferWidth) + 1;
-        if (Console.CursorTop >= Console.BufferHeight - 3) Console.CursorTop--;
         Write(new string(' ', message.Length), newLine: false);
     }
 
