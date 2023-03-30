@@ -82,6 +82,8 @@ public static class CompressionModule
         else throw new("No file or directory located at \"source\"");
     }
 
+    // Rar can't be compressed.
+
     [Command("targz")]
     [Command("tar.gz")]
     [Command("tar-gz")]

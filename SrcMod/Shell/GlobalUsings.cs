@@ -1,4 +1,5 @@
 ﻿global using Nerd_STF.Mathematics;
+global using SharpCompress.Archives.Rar;
 global using SharpCompress.Archives.SevenZip;
 global using SharpCompress.Readers;
 global using SrcMod.Shell;

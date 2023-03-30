@@ -40,6 +40,37 @@ public static class ExtractionModule
         Write(new string(' ', message.Length), newLine: false);
     }
 
+    [Command("rar")]
+    public static void ExtractRar(string source, string? destination = null)
+    {
+        if (!File.Exists(source)) throw new($"No file exists at \"{source}\".");
+
+        if (destination is null)
+        {
+            string full = Path.GetFullPath(source);
+            string folder = Program.Shell!.WorkingDirectory;
+            string name = Path.GetFileNameWithoutExtension(full);
+
+            destination = $"{folder}\\{name}";
+        }
+
+        if (!Directory.Exists(destination)) Directory.CreateDirectory(destination);
+
+        FileStream reader = new(source, FileMode.Open);
+        RarArchive rar = RarArchive.Open(reader);
+
+        IReader data = rar.ExtractAllEntries();
+        data.WriteAllToDirectory(destination, new()
+        {
+            ExtractFullPath = true,
+            Overwrite = true,
+            PreserveFileTime = true
+        });
+
+        rar.Dispose();
+        reader.Dispose();
+    }
+
     [Command("tar")]
     [Command("tarball")]
     public static void ExtractTar(string source, string? destination = null)
