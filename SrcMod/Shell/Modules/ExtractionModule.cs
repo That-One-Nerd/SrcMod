@@ -114,4 +114,32 @@ public static class ExtractionModule
         zip.Dispose();
         reader.Dispose();
     }
+
+    [Command("7z")]
+    [Command("7zip")]
+    [Command("sevenzip")]
+    public static void Extract7Zip(string source, string? destination = null)
+    {
+        if (!File.Exists(source)) throw new($"No file exists at \"{source}\".");
+
+        if (destination is null)
+        {
+            string full = Path.GetFullPath(source);
+            string folder = Program.Shell!.WorkingDirectory;
+            string name = Path.GetFileNameWithoutExtension(full);
+
+            destination = $"{folder}\\{name}";
+        }
+
+        if (!Directory.Exists(destination)) Directory.CreateDirectory(destination);
+
+        FileStream reader = new(source, FileMode.Open);
+        SevenZipArchive zip = SevenZipArchive.Open(source);
+
+        IReader data = zip.ExtractAllEntries();
+        data.WriteAllToDirectory(destination);
+
+        zip.Dispose();
+        reader.Dispose();
+    }
 }

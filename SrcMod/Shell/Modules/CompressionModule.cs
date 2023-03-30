@@ -1,8 +1,9 @@
-﻿using System.Reflection.Emit;
-using System.Xml.Linq;
+﻿namespace SrcMod.Shell.Modules;
 
-namespace SrcMod.Shell.Modules;
-
+// Some things that can be extracted can't be compressed by SharpCompress.
+// In the future I might replace it with my own, but that'll take a *really*
+// long time and I'm already planning to do that for the valve compression formats,
+// so I'll seethe for now.
 [Module("compress")]
 public static class CompressionModule
 {
@@ -228,4 +229,6 @@ public static class CompressionModule
             name = $"Compressed a file or folder into a zip archive located at \"{destination}\""
         });
     }
+
+    // 7z can't be compressed.
 }
