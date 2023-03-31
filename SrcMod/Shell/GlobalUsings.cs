@@ -3,6 +3,7 @@ global using SharpCompress.Archives.Rar;
 global using SharpCompress.Archives.SevenZip;
 global using SharpCompress.Readers;
 global using SrcMod.Shell;
+global using SrcMod.Shell.Interop;
 global using SrcMod.Shell.Modules.ObjectModels;
 global using System;
 global using System.Collections.Generic;

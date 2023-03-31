@@ -16,6 +16,9 @@ public class Shell
     public List<HistoryItem> History;
     public string WorkingDirectory;
 
+    private bool lastCancel;
+    private bool printedCancel;
+
     public Shell()
     {
         Console.CursorVisible = false;
@@ -79,6 +82,9 @@ public class Shell
         Write(" by ", ConsoleColor.White, false);
         Write($"{Author}", ConsoleColor.DarkYellow);
 
+        lastCancel = false;
+        Console.CancelKeyPress += HandleCancel;
+
         ActiveGame = null;
 
         ReloadDirectoryInfo();
@@ -106,8 +112,6 @@ public class Shell
 
     public string ReadLine()
     {
-        Console.CursorVisible = true;
-
         Write($"\n{WorkingDirectory}", ConsoleColor.DarkGreen, false);
         if (ActiveGame is not null) Write($" {ActiveGame}", ConsoleColor.DarkYellow, false);
         if (ActiveMod is not null) Write($" {ActiveMod}", ConsoleColor.Magenta, false);
@@ -116,17 +120,55 @@ public class Shell
         Write($" {Name}", ConsoleColor.DarkCyan, false);
         Write(" > ", ConsoleColor.White, false);
 
+        bool printed = false;
+
+        if (lastCancel && !printedCancel)
+        {
+            // Print the warning. A little bit of mess because execution must
+            // continue without funny printing errors but it's alright I guess.
+
+            int originalLeft = Console.CursorLeft;
+
+            Console.CursorTop -= 3;
+            Write("Press ^C again to exit the shell.", ConsoleColor.Red);
+            // Send a warning sound.
+
+            Winmm.PlaySound("SystemAsterisk", nint.Zero,
+                (uint)(Winmm.PlaySoundFlags.SND_ALIAS | Winmm.PlaySoundFlags.SND_ASYNC));
+
+            printedCancel = true;
+            Console.CursorTop += 2;
+
+            Console.CursorLeft = originalLeft;
+            printed = true;
+        }
+
         Console.ForegroundColor = ConsoleColor.White;
+        Console.CursorVisible = true;
         string message = Console.ReadLine()!;
+        Console.CursorVisible = false;
         Console.ResetColor();
 
-        Console.CursorVisible = false;
+        if (!printed)
+        {
+            lastCancel = false;
+            printedCancel = false;
+        }
 
         return message;
     }
 
     public void InvokeCommand(string cmd)
     {
+        if (cmd is null)
+        {
+            // This usually won't happen, but might if for example
+            // the shell cancel interrupt is called. This probably
+            // happens for other shell interrupts are called.
+            Write(null);
+            return;
+        }
+
         List<string> parts = new();
         string active = string.Empty;
 
@@ -204,5 +246,23 @@ public class Shell
         string title = "SrcMod";
         if (ActiveMod is not null) title += $" - {ActiveMod.Name}";
         Console.Title = title;
+    }
+
+    private void HandleCancel(object? sender, ConsoleCancelEventArgs args)
+    {
+        // Due to some funny multithreading issues, we want to make the warning label
+        // single-threaded on the shell.
+        if (!lastCancel)
+        {
+            // Enable the warning. The "ReadLine" method will do the rest.
+            lastCancel = true;
+            args.Cancel = true; // "Cancel" referring to the cancellation of the cancel operation.
+            return;
+        }
+
+        // Actually kill the shell. We do still have to worry about some multithreaded
+        // nonsense, but a bearable amount of it.
+        Console.ResetColor();
+        Environment.Exit(0);
     }
 }
