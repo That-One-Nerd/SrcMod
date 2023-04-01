@@ -1,6 +1,4 @@
-﻿using SrcMod.Shell.Interop;
-
-namespace SrcMod.Shell.Modules;
+﻿namespace SrcMod.Shell.Modules;
 
 [Module("clipboard")]
 public static class ClipboardModule

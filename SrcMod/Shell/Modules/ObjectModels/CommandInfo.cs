@@ -2,6 +2,7 @@
 
 public class CommandInfo
 {
+    public bool CanBeCancelled { get; private set; }
     public required ModuleInfo Module { get; init; }
     public required MethodInfo Method { get; init; }
     public string Name { get; private set; }
@@ -11,6 +12,7 @@ public class CommandInfo
 
     private CommandInfo()
     {
+        CanBeCancelled = false;
         Name = string.Empty;
         NameId = string.Empty;
         Parameters = Array.Empty<ParameterInfo>();
@@ -34,10 +36,13 @@ public class CommandInfo
         CommandAttribute[] attributes = info.GetCustomAttributes<CommandAttribute>().ToArray();
         if (attributes.Length <= 0) return Array.Empty<CommandInfo>();
 
+        CanCancelAttribute? cancel = info.GetCustomAttribute<CanCancelAttribute>();
+
         foreach (CommandAttribute attribute in attributes)
         {
             commands.Add(new()
             {
+                CanBeCancelled = cancel is null || cancel.CanCancel,
                 Method = info,
                 Module = parentModule,
                 Name = info.Name,
