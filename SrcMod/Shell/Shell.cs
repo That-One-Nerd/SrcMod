@@ -241,7 +241,7 @@ public class Shell
                 activeCommand.DoWork += runCommand;
                 activeCommand.RunWorkerAsync();
 
-                activeCommand.WorkerSupportsCancellation = true;
+                activeCommand.WorkerSupportsCancellation = command.CanBeCancelled;
 
                 while (activeCommand is not null && activeCommand.IsBusy) Thread.Yield();
 
