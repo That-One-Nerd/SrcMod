@@ -194,7 +194,7 @@ public static class BaseModule
     {
         List<string> lines = new() { " Timestamp           Description"};
         int longestName = 0;
-        for (int i = lines.Count - 1; i >= 0; i--)
+        for (int i = Program.Shell!.History.Count - 1; i >= 0; i--)
         {
             HistoryItem hist = Program.Shell!.History[i];
             if (hist.name.Length > longestName) longestName = hist.name.Length;
