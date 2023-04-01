@@ -159,7 +159,7 @@ public static class BaseModule
             FileInfo info = new(f);
             if (f.Length > longestName) longestName = f.Trim().Length;
 
-            int size = Mathf.Ceiling(MathF.Log10(info.Length));
+            int size = Mathf.Ceiling(info.Length.ToString().Length);
             if (longestSize > size) longestSize = size;
         }
 
