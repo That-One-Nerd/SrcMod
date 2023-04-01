@@ -1,10 +1,12 @@
-﻿namespace SrcMod.Shell;
+﻿using System.ComponentModel;
+
+namespace SrcMod.Shell;
 
 public class Shell
 {
     public const string Author = "That_One_Nerd";
     public const string Name = "SrcMod";
-    public const string Version = "Alpha 0.3.0";
+    public const string Version = "Alpha 0.3.1";
 
     public readonly string? ShellDirectory;
 
@@ -18,6 +20,8 @@ public class Shell
 
     private bool lastCancel;
     private bool printedCancel;
+
+    private BackgroundWorker? activeCommand;
 
     public Shell()
     {
@@ -83,6 +87,7 @@ public class Shell
         Write($"{Author}", ConsoleColor.DarkYellow);
 
         lastCancel = false;
+        activeCommand = null;
         Console.CancelKeyPress += HandleCancel;
 
         ActiveGame = null;
@@ -131,10 +136,7 @@ public class Shell
 
             Console.CursorTop -= 3;
             Write("Press ^C again to exit the shell.", ConsoleColor.Red);
-            // Send a warning sound.
-
-            Winmm.PlaySound("SystemAsterisk", nint.Zero,
-                (uint)(Winmm.PlaySoundFlags.SND_ALIAS | Winmm.PlaySoundFlags.SND_ASYNC));
+            PlayWarningSound();
 
             printedCancel = true;
             Console.CursorTop += 2;
@@ -213,29 +215,57 @@ public class Shell
                 int start = module.NameIsPrefix ? 2 : 1;
                 string[] args = parts.GetRange(start, parts.Count - start).ToArray();
 
+                void runCommand(object? sender, DoWorkEventArgs e)
+                {
 #if RELEASE
-                try
-                {
+                    try
+                    {
 #endif
-                    command.Invoke(args);
+                        command.Invoke(args);
 #if RELEASE
-                }
-                catch (TargetInvocationException ex)
-                {
-                    Write($"[ERROR] {ex.InnerException!.Message}", ConsoleColor.Red);
-                    if (LoadingBarEnabled) LoadingBarEnd();
-                }
-                catch (Exception ex)
-                {
-                    Write($"[ERROR] {ex.Message}", ConsoleColor.Red);
-                    if (LoadingBarEnabled) LoadingBarEnd();
-                }
+                    }
+                    catch (TargetInvocationException ex)
+                    {
+                        Write($"[ERROR] {ex.InnerException!.Message}", ConsoleColor.Red);
+                        if (LoadingBarEnabled) LoadingBarEnd();
+                    }
+                    catch (Exception ex)
+                    {
+                        Write($"[ERROR] {ex.Message}", ConsoleColor.Red);
+                        if (LoadingBarEnabled) LoadingBarEnd();
+                    }
 #endif
+                }
+
+                activeCommand = new();
+                activeCommand.DoWork += runCommand;
+                activeCommand.RunWorkerAsync();
+
+                activeCommand.WorkerSupportsCancellation = true;
+
+                while (activeCommand is not null && activeCommand.IsBusy) Thread.Yield();
+
+                if (activeCommand is not null)
+                {
+                    activeCommand.Dispose();
+                    activeCommand = null;
+                }
                 return;
             }
         }
 
         Write($"[ERROR] Could not find command \"{cmd}\".", ConsoleColor.Red);
+    }
+
+    private static void PlayErrorSound()
+    {
+        Winmm.PlaySound("SystemHand", nint.Zero,
+                (uint)(Winmm.PlaySoundFlags.Alias | Winmm.PlaySoundFlags.Async));
+    }
+    private static void PlayWarningSound()
+    {
+        Winmm.PlaySound("SystemAsterisk", nint.Zero,
+                (uint)(Winmm.PlaySoundFlags.Alias | Winmm.PlaySoundFlags.Async));
     }
 
     public void ReloadDirectoryInfo()
@@ -250,6 +280,28 @@ public class Shell
 
     private void HandleCancel(object? sender, ConsoleCancelEventArgs args)
     {
+        if (activeCommand is not null && activeCommand.IsBusy)
+        {
+            if (activeCommand.WorkerSupportsCancellation)
+            {
+                // Kill the active command.
+                activeCommand.CancelAsync();
+                activeCommand.Dispose();
+                activeCommand = null;
+            }
+            else
+            {
+                // Command doesn't support cancellation.
+                // Warn the user.
+                PlayErrorSound();
+            }
+
+            lastCancel = false;
+            printedCancel = false;
+            args.Cancel = true;
+            return;
+        }
+
         // Due to some funny multithreading issues, we want to make the warning label
         // single-threaded on the shell.
         if (!lastCancel)

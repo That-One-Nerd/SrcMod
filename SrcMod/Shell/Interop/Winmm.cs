@@ -8,18 +8,18 @@ internal static partial class Winmm
 
     public enum PlaySoundFlags : uint
     {
-        SND_SYNC = 0x00000000,
-        SND_ASYNC = 0x00000001,
-        SND_NODEFAULT = 0x00000002,
-        SND_MEMORY = 0x00000004,
-        SND_LOOP = 0x00000008,
-        SND_NOSTOP = 0x00000010,
-        SND_PURGE = 0x00000040,
-        SND_APPLICATION = 0x00000080,
-        SND_NOWAIT = 0x00002000,
-        SND_ALIAS = 0x00010000,
-        SND_FILENAME = 0x00020000,
-        SND_RESOURCE = 0x00040000,
-        SND_ALIAS_ID = 0x00100000,
+        Sync = 0x00000000,
+        Async = 0x00000001,
+        NoDefault = 0x00000002,
+        Memory = 0x00000004,
+        Loop = 0x00000008,
+        NoStop = 0x00000010,
+        Purge = 0x00000040,
+        Application = 0x00000080,
+        NoWait = 0x00002000,
+        Alias = 0x00010000,
+        FileName = 0x00020000,
+        Resource = 0x00040000,
+        AliasId = 0x00100000,
     }
 }
