@@ -255,6 +255,13 @@ public static class BaseModule
     [Command("echo")]
     public static void Echo(string msg) => Write(msg);
 
+    [Command("exit")]
+    [Command("quit")]
+    public static void QuitShell(int code = 0)
+    {
+        Environment.Exit(code);
+    }
+
     [Command("explorer")]
     public static void OpenExplorer(string path = ".") => Process.Start("explorer.exe", Path.GetFullPath(path));
 
@@ -318,6 +325,23 @@ public static class BaseModule
         Write(reader.ReadToEnd());
     }
 
+    [Command("run")]
+    [CanCancel(false)]
+    public static void RunProcess(string name, string args = "")
+    {
+        Process? run = Process.Start(new ProcessStartInfo()
+        {
+            Arguments = args,
+            CreateNoWindow = false,
+            ErrorDialog = true,
+            FileName = name
+        });
+
+        if (run is null) throw new($"Error starting the process \"{name}\"");
+
+        run.WaitForExit();
+    }
+
     [Command("sleep")]
     public static void WaitTime(int timeMs) => Thread.Sleep(timeMs);
 
@@ -368,13 +392,6 @@ public static class BaseModule
             },
             name = "Reset all source mods."
         });
-    }
-
-    [Command("exit")]
-    [Command("quit")]
-    public static void QuitShell(int code = 0)
-    {
-        Environment.Exit(code);
     }
 
     [Command("undo")]
