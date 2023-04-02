@@ -100,6 +100,75 @@ public static class BaseModule
         });
     }
 
+    [Command("cut")]
+    [Command("move")]
+    public static void MoveFile(string source, string destination)
+    {
+        string absSource = Path.GetFullPath(source),
+               absDest = Path.GetFullPath(destination);
+
+        if (File.Exists(source))
+        {
+            if (File.Exists(destination)) throw new($"File already exists at \"{destination}\"");
+
+            string message = $"Moving file \"{source}\" to \"{destination}\"...";
+            Write(message);
+
+            File.Move(source, destination);
+
+            Console.CursorLeft = 0;
+            Console.CursorTop -= (message.Length / Console.BufferWidth) + 1;
+            Write(new string(' ', message.Length), newLine: false);
+        }
+        else if (Directory.Exists(source))
+        {
+            if (Directory.Exists(destination)) throw new($"Directory already exists at \"{destination}\"");
+
+            string message = $"Moving directory \"{source}\" to \"{destination}\"...";
+            Write(message);
+
+            Directory.Move(source, destination);
+
+            Console.CursorLeft = 0;
+            Console.CursorTop -= (message.Length / Console.BufferWidth) + 1;
+            Write(new string(' ', message.Length), newLine: false);
+        }
+        else throw new($"No file or directory found at \"{source}\"");
+
+        DateTime stamp = DateTime.Now;
+
+        Program.Shell!.AddHistory(new()
+        {
+            action = delegate
+            {
+                if (File.Exists(absDest))
+                {
+                    FileInfo info = new(absDest);
+                    if ((info.LastWriteTime - stamp).TotalMilliseconds >= 10)
+                        throw new("The copied file has been modified and probably shouldn't be undone.");
+
+                    if (File.Exists(absSource)) throw new($"A file already exists at {absSource} and can't " +
+                                                          "be overriden.");
+
+                    File.Move(absDest, absSource);
+                }
+                else if (Directory.Exists(absDest))
+                {
+                    DirectoryInfo info = new(absDest);
+                    if ((info.LastWriteTime - stamp).TotalMilliseconds >= 10)
+                        throw new("The copied directory has been modified and probably shouldn't be undone.");
+
+                    if (Directory.Exists(absSource)) throw new($"A directory already exists at {absSource} and " +
+                                                          "can't be overriden.");
+
+                    Directory.Move(absDest, absSource);
+                }
+                else Write("Looks like the job is already completed Boss.", ConsoleColor.DarkYellow);
+            },
+            name = $"Moved a file or folder from \"{absSource}\" to \"{absDest}\""
+        });
+    }
+
     [Command("del")]
     public static void Delete(string path)
     {
@@ -204,73 +273,32 @@ public static class BaseModule
         DisplayWithPages(lines);
     }
 
-    [Command("cut")]
-    [Command("move")]
-    public static void MoveFile(string source, string destination)
+    [Command("makedir")]
+    [Command("mkdir")]
+    public static void CreateDirectory(string name)
     {
-        string absSource = Path.GetFullPath(source),
-               absDest = Path.GetFullPath(destination);
+        if (Directory.Exists(name)) throw new($"Directory already exists at \"{name}\"");
+        Directory.CreateDirectory(name);
+    }
 
-        if (File.Exists(source))
+    [Command("makefile")]
+    [Command("mkfile")]
+    public static void CreateFile(string name, string? text = null)
+    {
+        string? dir = Path.GetDirectoryName(name);
+        if (dir is null) throw new($"Cannot parse file path \"{name}\"");
+
+        if (File.Exists(name)) throw new($"File already exists at \"{name}\"");
+        if (!string.IsNullOrWhiteSpace(dir) && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
+
+        FileStream stream = File.Create(name);
+        if (text is not null)
         {
-            if (File.Exists(destination)) throw new($"File already exists at \"{destination}\"");
-
-            string message = $"Moving file \"{source}\" to \"{destination}\"...";
-            Write(message);
-
-            File.Move(source, destination);
-
-            Console.CursorLeft = 0;
-            Console.CursorTop -= (message.Length / Console.BufferWidth) + 1;
-            Write(new string(' ', message.Length), newLine: false);
+            StreamWriter writer = new(stream);
+            writer.Write(text);
+            writer.Close();
         }
-        else if (Directory.Exists(source))
-        {
-            if (Directory.Exists(destination)) throw new($"Directory already exists at \"{destination}\"");
-
-            string message = $"Moving directory \"{source}\" to \"{destination}\"...";
-            Write(message);
-
-            Directory.Move(source, destination);
-
-            Console.CursorLeft = 0;
-            Console.CursorTop -= (message.Length / Console.BufferWidth) + 1;
-            Write(new string(' ', message.Length), newLine: false);
-        }
-        else throw new($"No file or directory found at \"{source}\"");
-
-        DateTime stamp = DateTime.Now;
-
-        Program.Shell!.AddHistory(new()
-        {
-            action = delegate
-            {
-                if (File.Exists(absDest))
-                {
-                    FileInfo info = new(absDest);
-                    if ((info.LastWriteTime - stamp).TotalMilliseconds >= 10)
-                        throw new("The copied file has been modified and probably shouldn't be undone.");
-
-                    if (File.Exists(absSource)) throw new($"A file already exists at {absSource} and can't " +
-                                                          "be overriden.");
-
-                    File.Move(absDest, absSource);
-                }
-                else if (Directory.Exists(absDest))
-                {
-                    DirectoryInfo info = new(absDest);
-                    if ((info.LastWriteTime - stamp).TotalMilliseconds >= 10)
-                        throw new("The copied directory has been modified and probably shouldn't be undone.");
-
-                    if (Directory.Exists(absSource)) throw new($"A directory already exists at {absSource} and " +
-                                                          "can't be overriden.");
-
-                    Directory.Move(absDest, absSource);
-                }
-                else Write("Looks like the job is already completed Boss.", ConsoleColor.DarkYellow);
-            },
-            name = $"Moved a file or folder from \"{absSource}\" to \"{absDest}\""
-        });
+        stream.Close();
     }
 
     [Command("permdel")]
