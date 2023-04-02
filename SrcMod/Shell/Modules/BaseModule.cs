@@ -100,110 +100,6 @@ public static class BaseModule
         });
     }
 
-    [Command("del")]
-    public static void Delete(string path)
-    {
-        if (File.Exists(path))
-        {
-            string tempFile = Path.GetTempFileName();
-            File.Delete(tempFile);
-            File.Copy(path, tempFile);
-            File.Delete(path);
-
-            Program.Shell!.AddHistory(new()
-            {
-                action = delegate
-                {
-                    if (File.Exists(path)) throw new("Can't overwrite already existing file.");
-                    File.Copy(tempFile, path);
-                    File.Delete(tempFile);
-                },
-                name = $"Deleted file \"{Path.GetFileName(path)}\""
-            });
-        }
-        else if (Directory.Exists(path))
-        {
-            string[] parts = path.Replace("/", "\\").Split('\\',
-                StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-
-            DirectoryInfo tempDir = Directory.CreateTempSubdirectory();
-            Directory.Delete(tempDir.FullName);
-            Directory.Move(path, tempDir.FullName);
-
-            Program.Shell!.AddHistory(new()
-            {
-                action = delegate
-                {
-                    if (Directory.Exists(path)) throw new("Can't overwrite already existing file.");
-                    Directory.Move(tempDir.FullName, path);
-                },
-                name = $"Deleted directory \"{parts.Last()}\""
-            });
-        }
-        else throw new($"No file or directory exists at \"{path}\"");
-    }
-
-    [Command("dir")]
-    public static void ListFilesAndDirs(string path = ".")
-    {
-        string[] dirs = Directory.GetDirectories(path),
-                 files = Directory.GetFiles(path);
-
-        List<string> lines = new();
-
-        int longestName = 0,
-            longestSize = 0;
-        foreach (string d in dirs) if (d.Length > longestName) longestName = d.Length;
-        foreach (string f in files)
-        {
-            FileInfo info = new(f);
-            if (f.Length > longestName) longestName = f.Trim().Length;
-
-            int size = Mathf.Ceiling(MathF.Log10(info.Length));
-            if (longestSize > size) longestSize = size;
-        }
-
-        string header = $"  Type       Name{new string(' ', longestName - 4)}Date Modified        File Size" +
-                        $"{new string(' ', Mathf.Max(0, longestSize - 10) + 1)}";
-        lines.Add($"{header}\n{new string('-', header.Length)}");
-
-        foreach (string d in dirs)
-        {
-            DirectoryInfo info = new(d);
-            lines.Add($" Directory  {info.Name.Trim()}{new string(' ', longestName - info.Name.Trim().Length)}" +
-                  $"{info.LastWriteTime:MM/dd/yyyy HH:mm:ss}");
-        }
-        foreach (string f in files)
-        {
-            FileInfo info = new(f);
-            lines.Add($" File       {info.Name.Trim()}{new string(' ', longestName - info.Name.Trim().Length)}" +
-                  $"{info.LastWriteTime:MM/dd/yyyy HH:mm:ss}  {info.Length}");
-        }
-
-        DisplayWithPages(lines);
-    }
-
-    [Command("echo")]
-    public static void Echo(string msg) => Write(msg);
-
-    [Command("explorer")]
-    public static void OpenExplorer(string path = ".") => Process.Start("explorer.exe", Path.GetFullPath(path));
-
-    [Command("history")]
-    public static void ShowHistory()
-    {
-        List<string> lines = new() { " Timestamp           Description"};
-        int longestName = 0;
-        for (int i = lines.Count - 1; i >= 0; i--)
-        {
-            HistoryItem hist = Program.Shell!.History[i];
-            if (hist.name.Length > longestName) longestName = hist.name.Length;
-            lines.Add(hist.ToString());
-        }
-        lines.Insert(1, new string('-', 22 + longestName));
-        DisplayWithPages(lines);
-    }
-
     [Command("cut")]
     [Command("move")]
     public static void MoveFile(string source, string destination)
@@ -273,6 +169,145 @@ public static class BaseModule
         });
     }
 
+    [Command("del")]
+    public static void Delete(string path)
+    {
+        if (File.Exists(path))
+        {
+            string tempFile = Path.GetTempFileName();
+            File.Delete(tempFile);
+            File.Copy(path, tempFile);
+            File.Delete(path);
+
+            Program.Shell!.AddHistory(new()
+            {
+                action = delegate
+                {
+                    if (File.Exists(path)) throw new("Can't overwrite already existing file.");
+                    File.Copy(tempFile, path);
+                    File.Delete(tempFile);
+                },
+                name = $"Deleted file \"{Path.GetFileName(path)}\""
+            });
+        }
+        else if (Directory.Exists(path))
+        {
+            string[] parts = path.Replace("/", "\\").Split('\\',
+                StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
+            DirectoryInfo tempDir = Directory.CreateTempSubdirectory();
+            Directory.Delete(tempDir.FullName);
+            Directory.Move(path, tempDir.FullName);
+
+            Program.Shell!.AddHistory(new()
+            {
+                action = delegate
+                {
+                    if (Directory.Exists(path)) throw new("Can't overwrite already existing file.");
+                    Directory.Move(tempDir.FullName, path);
+                },
+                name = $"Deleted directory \"{parts.Last()}\""
+            });
+        }
+        else throw new($"No file or directory exists at \"{path}\"");
+    }
+
+    [Command("dir")]
+    public static void ListFilesAndDirs(string path = ".")
+    {
+        string[] dirs = Directory.GetDirectories(path),
+                 files = Directory.GetFiles(path);
+
+        List<string> lines = new();
+
+        int longestName = 0,
+            longestSize = 0;
+        foreach (string d in dirs) if (d.Length > longestName) longestName = d.Length;
+        foreach (string f in files)
+        {
+            FileInfo info = new(f);
+            if (f.Length > longestName) longestName = f.Trim().Length;
+
+            int size = Mathf.Ceiling(info.Length.ToString().Length);
+            if (longestSize > size) longestSize = size;
+        }
+
+        string header = $"  Type       Name{new string(' ', longestName - 4)}Date Modified        File Size" +
+                        $"{new string(' ', Mathf.Max(0, longestSize - 10) + 1)}";
+        lines.Add($"{header}\n{new string('-', header.Length)}");
+
+        foreach (string d in dirs)
+        {
+            DirectoryInfo info = new(d);
+            lines.Add($" Directory  {info.Name.Trim()}{new string(' ', longestName - info.Name.Trim().Length)}" +
+                  $"{info.LastWriteTime:MM/dd/yyyy HH:mm:ss}");
+        }
+        foreach (string f in files)
+        {
+            FileInfo info = new(f);
+            lines.Add($" File       {info.Name.Trim()}{new string(' ', longestName - info.Name.Trim().Length)}" +
+                  $"{info.LastWriteTime:MM/dd/yyyy HH:mm:ss}  {info.Length}");
+        }
+
+        DisplayWithPages(lines);
+    }
+
+    [Command("echo")]
+    public static void Echo(string msg) => Write(msg);
+
+    [Command("exit")]
+    [Command("quit")]
+    public static void QuitShell(int code = 0)
+    {
+        Environment.Exit(code);
+    }
+
+    [Command("explorer")]
+    public static void OpenExplorer(string path = ".") => Process.Start("explorer.exe", Path.GetFullPath(path));
+
+    [Command("history")]
+    public static void ShowHistory()
+    {
+        List<string> lines = new() { " Timestamp           Description"};
+        int longestName = 0;
+        for (int i = Program.Shell!.History.Count - 1; i >= 0; i--)
+        {
+            HistoryItem hist = Program.Shell!.History[i];
+            if (hist.name.Length > longestName) longestName = hist.name.Length;
+            lines.Add(hist.ToString());
+        }
+        lines.Insert(1, new string('-', 22 + longestName));
+        DisplayWithPages(lines);
+    }
+
+    [Command("makedir")]
+    [Command("mkdir")]
+    public static void CreateDirectory(string name)
+    {
+        if (Directory.Exists(name)) throw new($"Directory already exists at \"{name}\"");
+        Directory.CreateDirectory(name);
+    }
+
+    [Command("makefile")]
+    [Command("mkfile")]
+    public static void CreateFile(string name, string? text = null)
+    {
+        string? dir = Path.GetDirectoryName(name);
+        if (dir is null) throw new($"Cannot parse file path \"{name}\"");
+
+        if (File.Exists(name)) throw new($"File already exists at \"{name}\"");
+        if (!string.IsNullOrWhiteSpace(dir) && !Directory.Exists(dir)) Directory.CreateDirectory(dir);
+
+        FileStream stream = File.Create(name);
+        if (text is not null)
+        {
+            StreamWriter writer = new(stream);
+            writer.Write(text);
+            writer.Close();
+        }
+        stream.Close();
+    }
+
     [Command("permdel")]
     public static void ReallyDelete(string path)
     {
@@ -288,6 +323,23 @@ public static class BaseModule
         if (!File.Exists(file)) throw new($"No file exists at \"{file}\"");
         StreamReader reader = new(file);
         Write(reader.ReadToEnd());
+    }
+
+    [Command("run")]
+    [CanCancel(false)]
+    public static void RunProcess(string name, string args = "")
+    {
+        Process? run = Process.Start(new ProcessStartInfo()
+        {
+            Arguments = args,
+            CreateNoWindow = false,
+            ErrorDialog = true,
+            FileName = name
+        });
+
+        if (run is null) throw new($"Error starting the process \"{name}\"");
+
+        run.WaitForExit();
     }
 
     [Command("sleep")]
@@ -340,13 +392,6 @@ public static class BaseModule
             },
             name = "Reset all source mods."
         });
-    }
-
-    [Command("exit")]
-    [Command("quit")]
-    public static void QuitShell(int code = 0)
-    {
-        Environment.Exit(code);
     }
 
     [Command("undo")]
