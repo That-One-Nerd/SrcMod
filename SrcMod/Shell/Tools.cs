@@ -1,4 +1,6 @@
-﻿namespace SrcMod.Shell;
+﻿using System.Numerics;
+
+namespace SrcMod.Shell;
 
 public static class Tools
 {
@@ -16,7 +18,8 @@ public static class Tools
     {
         Serializer = JsonSerializer.Create(new()
         {
-            Formatting = Formatting.Indented
+            Formatting = Formatting.Indented,
+            NullValueHandling = NullValueHandling.Ignore
         });
     }
 
@@ -163,6 +166,30 @@ public static class Tools
             loadingPosition--;
             LoadingBarSet(loadingBarValue, loadingBarColor);
         }
+    }
+
+    public static void WriteAutoColor(object? message, bool newLine = true)
+    {
+        ConsoleColor? col = null;
+        if (message is null) col = ConsoleColor.DarkGray;
+        else if (message is bool typeBool)
+        {
+            if (typeBool) col = ConsoleColor.Green;
+            else col = ConsoleColor.Red;
+        }
+        else if (message is sbyte || message is byte || message is short || message is ushort ||
+                 message is int || message is uint || message is long || message is ulong ||
+                 message is float || message is double || message is decimal) col = ConsoleColor.DarkGreen;
+        else if (message is char) col = ConsoleColor.DarkYellow;
+        else if (message is AskMode typeAskMode) col = typeAskMode switch
+        {
+            AskMode.Never => ConsoleColor.Red,
+            AskMode.Ask => ConsoleColor.DarkGray,
+            AskMode.Always => ConsoleColor.Green,
+            _ => null
+        };
+
+        Write(message, col, newLine);
     }
 
     public static bool ValidateUnsafe()

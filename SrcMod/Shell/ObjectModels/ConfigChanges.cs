@@ -2,7 +2,9 @@
 
 public record struct ConfigChanges
 {
-    public bool HasChange => SteamDirectories is not null;
+    [JsonIgnore]
+    public bool HasChange => GameDirectories is not null || RunUnsafeCommands is not null;
 
-    public string[]? SteamDirectories;
+    public string[]? GameDirectories;
+    public AskMode? RunUnsafeCommands;
 }

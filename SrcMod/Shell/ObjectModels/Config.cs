@@ -24,18 +24,21 @@ public struct Config
         Defaults = new();
     }
 
-    public string[] SteamDirectories;
+    public string[] GameDirectories;
+    public AskMode RunUnsafeCommands;
 
     public Config ApplyChanges(ConfigChanges changes) => this with
     {
-        SteamDirectories = changes.SteamDirectories ?? SteamDirectories
+        GameDirectories = changes.GameDirectories ?? GameDirectories,
+        RunUnsafeCommands = changes.RunUnsafeCommands ?? RunUnsafeCommands
     };
     public ConfigChanges GetChanges(Config? baseConfig = null)
     {
         Config reference = baseConfig ?? Defaults;
         return new()
         {
-            SteamDirectories = reference.SteamDirectories == SteamDirectories ? null : SteamDirectories
+            GameDirectories = reference.GameDirectories == GameDirectories ? null : GameDirectories,
+            RunUnsafeCommands = reference.RunUnsafeCommands == RunUnsafeCommands ? null : RunUnsafeCommands
         };
     }
 
