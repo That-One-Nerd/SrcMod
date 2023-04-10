@@ -1,9 +1,9 @@
-﻿using System.Text;
-
-namespace SrcMod.Shell;
+﻿namespace SrcMod.Shell;
 
 public static class Tools
 {
+    public static JsonSerializer Serializer { get; private set; }
+
     private static int loadingPosition = -1;
     private static int lastLoadingBufferSize = 0;
     private static int lastLoadingValue = -1;
@@ -11,6 +11,14 @@ public static class Tools
     private static ConsoleColor loadingBarColor = Console.ForegroundColor;
 
     public static bool LoadingBarEnabled { get; private set; }
+
+    static Tools()
+    {
+        Serializer = JsonSerializer.Create(new()
+        {
+            Formatting = Formatting.Indented
+        });
+    }
 
     public static void DisplayWithPages(IEnumerable<string> lines, ConsoleColor? color = null)
     {
