@@ -50,7 +50,7 @@ public class Shell
 
         // Load config.
         if (ShellDirectory is null) Write("[WARNING] Could not load config from shell location. Defaults will be used.");
-        else ShellConfig.LoadConfig(ShellDirectory);
+        else Config.LoadConfig(ShellDirectory);
 
         // Load modules and commands.
         List<Assembly?> possibleAsms = new()
@@ -254,7 +254,7 @@ public class Shell
                 }
 
                 if (ShellDirectory is null) Write("[WARNING] Could not save config to shell location. Any changes will be ignored.");
-                else ShellConfig.SaveConfig(ShellDirectory);
+                else Config.SaveConfig(ShellDirectory);
                 return;
             }
         }
