@@ -21,10 +21,6 @@ public static class ConfigModule
     private static void DisplayConfigColor()
     {
         Config config = Config.LoadedConfig;
-        List<string> dirs = config.GameDirectories is null ? new() : new(config.GameDirectories);
-        dirs.Add("config");
-        config.GameDirectories = dirs.ToArray();
-        Config.LoadedConfig = config;
 
         Write("Steam Game Directories: ", null, false);
         if (config.GameDirectories is null || config.GameDirectories.Length <= 0) Write("None", ConsoleColor.DarkGray);
@@ -40,9 +36,20 @@ public static class ConfigModule
             }
             Write("]", ConsoleColor.DarkGray);
         }
+
+        Write("Run Unsafe Commands: ", null, false);
+        ConsoleColor color = config.RunUnsafeCommands switch
+        {
+            AskMode.Never => ConsoleColor.Red,
+            AskMode.Always => ConsoleColor.Green,
+            AskMode.Ask or _ => ConsoleColor.DarkGray
+        };
+        Write(config.RunUnsafeCommands, color);
     }
     private static void DisplayConfigRaw()
     {
+        // This is definitely a bit inefficient, but shouldn't be too much of an issue.
+
         MemoryStream ms = new();
         StreamWriter writer = new(ms, leaveOpen: true);
         JsonTextWriter jsonWriter = new(writer);
