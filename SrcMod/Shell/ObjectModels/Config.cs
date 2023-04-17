@@ -21,7 +21,15 @@ public struct Config
 
     static Config()
     {
-        Defaults = new();
+        Defaults = new()
+        {
+            GameDirectories = new[]
+            {
+                "testing 1",
+                "testing 2"
+            },
+            RunUnsafeCommands = AskMode.Ask
+        };
     }
 
     public string[] GameDirectories;
@@ -29,17 +37,20 @@ public struct Config
 
     public Config ApplyChanges(ConfigChanges changes) => this with
     {
-        GameDirectories = changes.GameDirectories ?? GameDirectories,
+        GameDirectories = GameDirectories.Union(changes.GameDirectories ?? Array.Empty<string>()).ToArray(),
         RunUnsafeCommands = changes.RunUnsafeCommands ?? RunUnsafeCommands
     };
     public ConfigChanges GetChanges(Config? baseConfig = null)
     {
         Config reference = baseConfig ?? Defaults;
-        return new()
+        ConfigChanges changes = new()
         {
-            GameDirectories = reference.GameDirectories == GameDirectories ? null : GameDirectories,
+            GameDirectories = reference.GameDirectories == GameDirectories ? null :
+                GameDirectories.Where(x => !reference.GameDirectories.Contains(x)).ToArray(),
             RunUnsafeCommands = reference.RunUnsafeCommands == RunUnsafeCommands ? null : RunUnsafeCommands
         };
+
+        return changes;
     }
 
     public static void LoadConfig(string basePath)
