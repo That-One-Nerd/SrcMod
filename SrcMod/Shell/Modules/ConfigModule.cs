@@ -4,7 +4,7 @@
 public static class ConfigModule
 {
     [Command("display")]
-    public static void DisplayConfig(ConfigDisplayMode mode = ConfigDisplayMode.Color)
+    public static void DisplayConfig(ConfigDisplayMode mode = ConfigDisplayMode.All)
     {
         switch (mode)
         {
@@ -12,39 +12,24 @@ public static class ConfigModule
                 DisplayConfigRaw();
                 break;
 
-            case ConfigDisplayMode.Color:
-                DisplayConfigColor();
+            case ConfigDisplayMode.All:
+                DisplayConfigAll();
+                break;
+
+            case ConfigDisplayMode.GameDirectories:
+                DisplayConfigGameDirectories();
+                break;
+
+            case ConfigDisplayMode.RunUnsafeCommands:
+                DisplayConfigUnsafeCommands();
                 break;
         }
     }
 
-    private static void DisplayConfigColor()
+    private static void DisplayConfigAll()
     {
-        Config config = Config.LoadedConfig;
-
-        Write("Steam Game Directories: ", null, false);
-        if (config.GameDirectories is null || config.GameDirectories.Length <= 0) Write("None", ConsoleColor.DarkGray);
-        else
-        {
-            Write("[", ConsoleColor.DarkGray);
-            for (int i = 0; i < config.GameDirectories.Length; i++)
-            {
-                Write("    \"", ConsoleColor.DarkGray, false);
-                Write(config.GameDirectories[i], ConsoleColor.White, false);
-                if (i < config.GameDirectories.Length - 1) Write("\",", ConsoleColor.DarkGray);
-                else Write("\"", ConsoleColor.DarkGray);
-            }
-            Write("]", ConsoleColor.DarkGray);
-        }
-
-        Write("Run Unsafe Commands: ", null, false);
-        ConsoleColor color = config.RunUnsafeCommands switch
-        {
-            AskMode.Never => ConsoleColor.Red,
-            AskMode.Always => ConsoleColor.Green,
-            AskMode.Ask or _ => ConsoleColor.DarkGray
-        };
-        Write(config.RunUnsafeCommands, color);
+        DisplayConfigGameDirectories();
+        DisplayConfigUnsafeCommands();
     }
     private static void DisplayConfigRaw()
     {
@@ -68,10 +53,41 @@ public static class ConfigModule
         reader.Close();
         ms.Close();
     }
+    private static void DisplayConfigGameDirectories()
+    {
+        Write("Steam Game Directories: ", null, false);
+        if (Config.LoadedConfig.GameDirectories is null || Config.LoadedConfig.GameDirectories.Length <= 0)
+            Write("None", ConsoleColor.DarkGray);
+        else
+        {
+            Write("[", ConsoleColor.DarkGray);
+            for (int i = 0; i < Config.LoadedConfig.GameDirectories.Length; i++)
+            {
+                Write("    \"", ConsoleColor.DarkGray, false);
+                Write(Config.LoadedConfig.GameDirectories[i], ConsoleColor.White, false);
+                if (i < Config.LoadedConfig.GameDirectories.Length - 1) Write("\",", ConsoleColor.DarkGray);
+                else Write("\"", ConsoleColor.DarkGray);
+            }
+            Write("]", ConsoleColor.DarkGray);
+        }
+    }
+    private static void DisplayConfigUnsafeCommands()
+    {
+        Write("Run Unsafe Commands: ", null, false);
+        ConsoleColor color = Config.LoadedConfig.RunUnsafeCommands switch
+        {
+            AskMode.Never => ConsoleColor.Red,
+            AskMode.Always => ConsoleColor.Green,
+            AskMode.Ask or _ => ConsoleColor.DarkGray
+        };
+        Write(Config.LoadedConfig.RunUnsafeCommands, color);
+    }
 
     public enum ConfigDisplayMode
     {
         Raw,
-        Color
+        All,
+        GameDirectories,
+        RunUnsafeCommands
     }
 }
