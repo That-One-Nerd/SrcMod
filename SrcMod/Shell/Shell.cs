@@ -247,12 +247,12 @@ public class Shell
                     catch (TargetInvocationException ex)
                     {
                         Write($"[ERROR] {ex.InnerException!.Message}", ConsoleColor.Red);
-                        if (LoadingBarEnabled) LoadingBarEnd();
+                        if (LoadingBar.Enabled) LoadingBar.End();
                     }
                     catch (Exception ex)
                     {
                         Write($"[ERROR] {ex.Message}", ConsoleColor.Red);
-                        if (LoadingBarEnabled) LoadingBarEnd();
+                        if (LoadingBar.Enabled) LoadingBar.End();
                     }
 #endif
                 }
