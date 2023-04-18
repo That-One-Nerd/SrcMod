@@ -13,6 +13,7 @@
 	<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
 	<ApplicationIcon>Logo.ico</ApplicationIcon>
 	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	<NoWin32Manifest>true</NoWin32Manifest>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -31,6 +32,7 @@
 
   <ItemGroup>
     <PackageReference Include="Nerd_STF" Version="2.3.2" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="SharpCompress" Version="0.33.0" />
   </ItemGroup>
 

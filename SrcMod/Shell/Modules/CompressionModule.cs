@@ -168,7 +168,7 @@ public static class CompressionModule
 
             int failed = 0;
 
-            LoadingBarStart();
+            LoadingBar.Start();
             for (int i = 0; i < files.Count; i++)
             {
                 bool failedThisTime = false;
@@ -181,7 +181,7 @@ public static class CompressionModule
                     failedThisTime = true;
                     failed++;
                 }
-                LoadingBarSet((i + 1) / (float)files.Count, failedThisTime ? ConsoleColor.Red : ConsoleColor.DarkGreen); ;
+                LoadingBar.Set((i + 1) / (float)files.Count, failedThisTime ? ConsoleColor.Red : ConsoleColor.DarkGreen); ;
                 Console.CursorLeft = 0;
                 string message = $"{relative[i]}";
                 int remainder = Console.BufferWidth - message.Length;
@@ -194,7 +194,7 @@ public static class CompressionModule
             archive.Dispose();
             writer.Dispose();
 
-            LoadingBarEnd();
+            LoadingBar.End();
 
             Console.CursorLeft = 0;
             Write(new string(' ', Console.BufferWidth), newLine: false);
