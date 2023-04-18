@@ -23,11 +23,7 @@ public struct Config
     {
         Defaults = new()
         {
-            GameDirectories = new[]
-            {
-                "testing 1",
-                "testing 2"
-            },
+            GameDirectories = Array.Empty<string>(),
             RunUnsafeCommands = AskMode.Ask
         };
     }

@@ -1,6 +1,4 @@
-﻿using System.Numerics;
-
-namespace SrcMod.Shell;
+﻿namespace SrcMod.Shell;
 
 internal static class Tools
 {
