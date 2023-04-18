@@ -4,16 +4,7 @@ namespace SrcMod.Shell;
 
 internal static class Tools
 {
-<<<<<<< HEAD
     public static JsonSerializer Serializer { get; private set; }
-
-    private static int loadingPosition = -1;
-    private static int lastLoadingBufferSize = 0;
-    private static int lastLoadingValue = -1;
-    private static float loadingBarValue = 0;
-    private static ConsoleColor loadingBarColor = Console.ForegroundColor;
-
-    public static bool LoadingBarEnabled { get; private set; }
 
     static Tools()
     {
@@ -24,8 +15,6 @@ internal static class Tools
         });
     }
 
-=======
->>>>>>> origin/shell-systems
     public static void DisplayWithPages(IEnumerable<string> lines, ConsoleColor? color = null)
     {
         int written = 0;
