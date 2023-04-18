@@ -4,6 +4,7 @@
 public static class ConfigModule
 {
     [Command("display")]
+    [Command("list")]
     public static void DisplayConfig(ConfigDisplayMode mode = ConfigDisplayMode.All)
     {
         switch (mode)
@@ -24,6 +25,106 @@ public static class ConfigModule
                 DisplayConfigUnsafeCommands();
                 break;
         }
+    }
+
+    [Command("add")]
+    [Command("append")]
+    public static void AppendConfigVariable(string name, string value)
+    {
+        Config config = Config.LoadedConfig;
+
+        switch (name.Trim().ToLower())
+        {
+            case "gamedirectories":
+                config.GameDirectories = config.GameDirectories.Append(value).ToArray();
+                break;
+
+            case "rununsafecommands":
+                throw new($"The config variable \"{name}\" is a single variable and cannot be appended to.");
+
+            default: throw new($"Unknown config variable \"{name}\"");
+        }
+
+        Config.LoadedConfig = config;
+    }
+
+    [Command("delete")]
+    [Command("remove")]
+    public static void RemoveConfigVariable(string name, string value)
+    {
+        Config config = Config.LoadedConfig;
+
+        switch (name.Trim().ToLower())
+        {
+            case "gamedirectories":
+                config.GameDirectories = config.GameDirectories
+                    .Where(x => x.Trim().ToLower() != value.Trim().ToLower())
+                    .ToArray();
+                break;
+
+            case "rununsafecommands":
+                throw new($"The config variable \"{name}\" is a single variable and cannot be appended to.");
+
+            default: throw new($"Unknown config variable \"{name}\"");
+        }
+
+        Config.LoadedConfig = config;
+    }
+
+    [Command("reset")]
+    public static void ResetConfig(string name = "all")
+    {
+        Config config = Config.LoadedConfig;
+
+        switch (name.Trim().ToLower())
+        {
+            case "gamedirectories":
+                config.GameDirectories = Config.Defaults.GameDirectories;
+                break;
+
+            case "rununsafecommands":
+                config.RunUnsafeCommands = Config.Defaults.RunUnsafeCommands;
+                break;
+
+            case "all":
+                config = Config.Defaults;
+                break;
+
+            default: throw new($"Unknown config variable \"{name}\"");
+        }
+
+        Config.LoadedConfig = config;
+    }
+
+    [Command("set")]
+    public static void SetConfigVariable(string name, string value)
+    {
+        Config config = Config.LoadedConfig;
+
+        switch (name.Trim().ToLower())
+        {
+            case "gamedirectories":
+                throw new($"The config variable \"{name}\" is a list and must be added or removed to.");
+
+            case "rununsafecommands":
+                if (int.TryParse(value, out int intRes))
+                {
+                    AskMode mode = (AskMode)intRes;
+                    if (!Enum.IsDefined(mode)) throw new($"(AskMode){value} is not a valid AskMode.");
+                    config.RunUnsafeCommands = mode;
+                }
+                else if (Enum.TryParse(value, true, out AskMode modeRes))
+                {
+                    if (!Enum.IsDefined(modeRes)) throw new($"\"{value}\" is not a valid AskMode.");
+                    config.RunUnsafeCommands = modeRes;
+                }
+                else throw new($"\"{value}\" is not a valid AskMode.");
+                break;
+
+            default: throw new($"Unknown config variable \"{name}\"");
+        }
+
+        Config.LoadedConfig = config;
     }
 
     private static void DisplayConfigAll()
