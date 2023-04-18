@@ -79,6 +79,7 @@ public struct Config
 
         StreamWriter writer = new(fullPath);
         JsonTextWriter jsonWriter = new(writer);
+        jsonWriter.Indentation = 4;
         Serializer.Serialize(jsonWriter, p_changes);
         jsonWriter.Close();
         writer.Close();

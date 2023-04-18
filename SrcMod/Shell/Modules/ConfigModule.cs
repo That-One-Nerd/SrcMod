@@ -5,24 +5,20 @@ public static class ConfigModule
 {
     [Command("display")]
     [Command("list")]
-    public static void DisplayConfig(ConfigDisplayMode mode = ConfigDisplayMode.All)
+    public static void DisplayConfig(string display = "all")
     {
-        switch (mode)
+        switch (display.Trim().ToLower())
         {
-            case ConfigDisplayMode.Raw:
-                DisplayConfigRaw();
-                break;
-
-            case ConfigDisplayMode.All:
+            case "all":
                 DisplayConfigAll();
                 break;
 
-            case ConfigDisplayMode.GameDirectories:
-                DisplayConfigGameDirectories();
+            case "raw":
+                DisplayConfigRaw();
                 break;
 
-            case ConfigDisplayMode.RunUnsafeCommands:
-                DisplayConfigUnsafeCommands();
+            default:
+                DisplayConfigName(display);
                 break;
         }
     }
@@ -129,66 +125,76 @@ public static class ConfigModule
 
     private static void DisplayConfigAll()
     {
-        DisplayConfigGameDirectories();
-        DisplayConfigUnsafeCommands();
+        FieldInfo[] validFields = (from field in typeof(Config).GetFields()
+                                   let isPublic = field.IsPublic
+                                   let isStatic = field.IsStatic
+                                   where isPublic && !isStatic
+                                   select field).ToArray();
+
+        foreach (FieldInfo field in validFields)
+            DisplayConfigItem(field.GetValue(Config.LoadedConfig), name: field.Name);
     }
-    private static void DisplayConfigRaw()
+    private static void DisplayConfigItem<T>(T item, int indents = 0, string name = "", bool newLine = true)
     {
-        // This is definitely a bit inefficient, but shouldn't be too much of an issue.
+        Write(new string(' ', indents * 4), newLine: false);
+        if (!string.IsNullOrWhiteSpace(name)) Write($"{name}: ", newLine: false);
 
-        MemoryStream ms = new();
-        StreamWriter writer = new(ms, leaveOpen: true);
-        JsonTextWriter jsonWriter = new(writer);
-
-        Serializer.Serialize(jsonWriter, Config.LoadedConfig);
-
-        jsonWriter.Close();
-        writer.Close();
-        ms.Position = 0;
-
-        StreamReader reader = new(ms);
-        string msg = reader.ReadToEnd();
-
-        Write(msg);
-
-        reader.Close();
-        ms.Close();
-    }
-    private static void DisplayConfigGameDirectories()
-    {
-        Write("Steam Game Directories: ", null, false);
-        if (Config.LoadedConfig.GameDirectories is null || Config.LoadedConfig.GameDirectories.Length <= 0)
-            Write("None", ConsoleColor.DarkGray);
-        else
+        if (item is Array itemArray)
         {
-            Write("[", ConsoleColor.DarkGray);
-            for (int i = 0; i < Config.LoadedConfig.GameDirectories.Length; i++)
+            if (itemArray.Length < 1)
             {
-                Write("    \"", ConsoleColor.DarkGray, false);
-                Write(Config.LoadedConfig.GameDirectories[i], ConsoleColor.White, false);
-                if (i < Config.LoadedConfig.GameDirectories.Length - 1) Write("\",", ConsoleColor.DarkGray);
-                else Write("\"", ConsoleColor.DarkGray);
+                Write("[]", ConsoleColor.DarkGray, newLine);
+                return;
             }
-            Write("]", ConsoleColor.DarkGray);
+
+            Write("[", ConsoleColor.DarkGray);
+            for (int i = 0; i < itemArray.Length; i++)
+            {
+                DisplayConfigItem(itemArray.GetValue(i), indents + 1, newLine: false);
+                if (i < itemArray.Length - 1) Write(',', newLine: false);
+                Write('\n', newLine: false);
+            }
+            Write(new string(' ', indents * 4) + "]", ConsoleColor.DarkGray, newLine);
         }
-    }
-    private static void DisplayConfigUnsafeCommands()
-    {
-        Write("Run Unsafe Commands: ", null, false);
-        ConsoleColor color = Config.LoadedConfig.RunUnsafeCommands switch
+        else if (item is byte itemByte) Write($"0x{itemByte:X2}", ConsoleColor.Yellow, newLine);
+        else if (item is sbyte or short or ushort or int or uint or long or ulong)
+            Write(item, ConsoleColor.Yellow, newLine);
+        else if (item is char)
+        {
+            Write("\'", ConsoleColor.DarkGray, false);
+            Write(item, ConsoleColor.Blue, false);
+            Write("\'", ConsoleColor.DarkGray, newLine);
+        }
+        else if (item is string)
+        {
+            Write("\"", ConsoleColor.DarkGray, false);
+            Write(item, ConsoleColor.DarkCyan, false);
+            Write("\"", ConsoleColor.DarkGray, newLine);
+        }
+        else if (item is AskMode) Write(item, item switch
         {
             AskMode.Never => ConsoleColor.Red,
             AskMode.Always => ConsoleColor.Green,
             AskMode.Ask or _ => ConsoleColor.DarkGray
-        };
-        Write(Config.LoadedConfig.RunUnsafeCommands, color);
+        }, newLine);
+        else Write(item, newLine: newLine);
     }
-
-    public enum ConfigDisplayMode
+    private static void DisplayConfigName(string name)
     {
-        Raw,
-        All,
-        GameDirectories,
-        RunUnsafeCommands
+        FieldInfo[] validFields = (from field in typeof(Config).GetFields()
+                                   let isPublic = field.IsPublic
+                                   let isStatic = field.IsStatic
+                                   where isPublic && !isStatic
+                                   select field).ToArray();
+
+        FieldInfo? chosenField = validFields.FirstOrDefault(x => x.Name.Trim().ToLower() == name.Trim().ToLower());
+        if (chosenField is null) throw new($"No config variable named \"{name}\".");
+
+        DisplayConfigItem(chosenField.GetValue(Config.LoadedConfig), name: chosenField.Name);
+    }
+    private static void DisplayConfigRaw()
+    {
+        string json = JsonConvert.SerializeObject(Config.LoadedConfig, Formatting.Indented);
+        Write(json);
     }
 }
