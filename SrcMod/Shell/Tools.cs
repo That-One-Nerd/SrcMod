@@ -2,8 +2,9 @@
 
 namespace SrcMod.Shell;
 
-public static class Tools
+internal static class Tools
 {
+<<<<<<< HEAD
     public static JsonSerializer Serializer { get; private set; }
 
     private static int loadingPosition = -1;
@@ -23,6 +24,8 @@ public static class Tools
         });
     }
 
+=======
+>>>>>>> origin/shell-systems
     public static void DisplayWithPages(IEnumerable<string> lines, ConsoleColor? color = null)
     {
         int written = 0;
@@ -84,73 +87,6 @@ public static class Tools
         return allFiles;
     }
 
-    public static void LoadingBarEnd(bool clear = true)
-    {
-        if (loadingPosition == -1) throw new("No loading bar is active.");
-
-        if (clear)
-        {
-            Int2 oldPos = (Console.CursorLeft, Console.CursorTop);
-
-            Console.CursorLeft = 0;
-            Console.CursorTop = loadingPosition;
-            Console.Write(new string(' ', Console.BufferWidth));
-            Console.CursorLeft = 0;
-
-            Console.SetCursorPosition(oldPos.x, oldPos.y);
-        }
-        loadingPosition = -1;
-        LoadingBarEnabled = false;
-    }
-    public static void LoadingBarSet(float value, ConsoleColor? color = null)
-    {
-        const string left = " --- [",
-                     right = "] --- ";
-        int barSize = Console.BufferWidth - left.Length - right.Length,
-            filled = (int)(barSize * value);
-
-        if (filled == lastLoadingValue) return;
-        lastLoadingValue = filled;
-
-        Int2 oldPos = (Console.CursorLeft, Console.CursorTop);
-
-        loadingBarValue = value;
-        loadingBarColor = color ?? Console.ForegroundColor;
-
-        // Erase last bar.
-        Console.SetCursorPosition(0, loadingPosition);
-        Console.Write(new string(' ', lastLoadingBufferSize));
-        Console.CursorLeft = 0;
-
-        // Add new bar.
-        lastLoadingBufferSize = Console.BufferWidth;
-
-        Write(left, newLine: false);
-        ConsoleColor oldFore = Console.ForegroundColor;
-
-        if (color is not null) Console.ForegroundColor = color.Value;
-        Write(new string('=', filled), newLine: false);
-        if (color is not null) Console.ForegroundColor = oldFore;
-        Write(new string(' ', barSize - filled), newLine: false);
-        Write(right, newLine: false);
-
-        if (oldPos.y == Console.CursorTop) oldPos.y++;
-        while (oldPos.y >= Console.BufferHeight)
-        {
-            Console.WriteLine();
-            oldPos.y--;
-            loadingPosition--;
-        }
-        Console.SetCursorPosition(oldPos.x, oldPos.y);
-    }
-    public static void LoadingBarStart(float value = 0, int? position = null, ConsoleColor? color = null)
-    {
-        if (loadingPosition != -1) throw new("The loading bar has already been enabled.");
-        loadingPosition = position ?? Console.CursorTop;
-        LoadingBarEnabled = true;
-        LoadingBarSet(value, color);
-    }
-
     public static void Write(object? message, ConsoleColor? col = null, bool newLine = true)
     {
         ConsoleColor prevCol = Console.ForegroundColor;
@@ -161,10 +97,10 @@ public static class Tools
 
         Console.ForegroundColor = prevCol;
 
-        if (newLine && LoadingBarEnabled && Console.CursorTop >= Console.BufferHeight - 1)
+        if (newLine && LoadingBar.Enabled && Console.CursorTop >= Console.BufferHeight - 1)
         {
-            loadingPosition--;
-            LoadingBarSet(loadingBarValue, loadingBarColor);
+            LoadingBar.position--;
+            LoadingBar.Set(LoadingBar.value, LoadingBar.color);
         }
     }
 

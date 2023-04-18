@@ -45,7 +45,7 @@ public static class BaseModule
 
             Write($"Copying directory \"{source}\" to \"{destination}\"...");
 
-            LoadingBarStart();
+            LoadingBar.Start();
             for (int i = 0; i < files.Length; i++)
             {
                 string file = files[i],
@@ -53,7 +53,7 @@ public static class BaseModule
                        destFile = Path.Combine(destination, file);
                 Directory.CreateDirectory(Path.GetDirectoryName(destFile)!);
                 File.Copy(sourceFile, destFile);
-                LoadingBarSet((i + 1) / (float)files.Length, ConsoleColor.DarkGreen);
+                LoadingBar.Set((i + 1) / (float)files.Length, ConsoleColor.DarkGreen);
                 Console.CursorLeft = 0;
                 string message = $"{sourceFile}";
                 int remainder = Console.BufferWidth - message.Length;
@@ -63,7 +63,7 @@ public static class BaseModule
                 Write(message, newLine: false);
             }
 
-            LoadingBarEnd();
+            LoadingBar.End();
 
             Console.CursorLeft = 0;
             Write(new string(' ', Console.BufferWidth), newLine: false);
@@ -361,13 +361,13 @@ public static class BaseModule
 
         Thread.Sleep(rand.Next(500, 1000));
 
-        LoadingBarStart();
+        LoadingBar.Start();
 
         for (int i = 0; i < files.Length; i++)
         {
             FileInfo file = new(files[i]);
             Thread.Sleep((int)(rand.Next(50, 100) * (file.Length >> 20)));
-            LoadingBarSet((i + 1) / (float)files.Length, ConsoleColor.Red);
+            LoadingBar.Set((i + 1) / (float)files.Length, ConsoleColor.Red);
             Console.CursorLeft = 0;
             string message = $"{files[i]}";
             int remainder = Console.BufferWidth - message.Length;
@@ -377,7 +377,7 @@ public static class BaseModule
             Write(message, newLine: false);
         }
 
-        LoadingBarEnd();
+        LoadingBar.End();
 
         Console.CursorLeft = 0;
         Write(new string(' ', Console.BufferWidth), newLine: false);

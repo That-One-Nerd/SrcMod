@@ -97,6 +97,26 @@ public class Shell
         ReloadDirectoryInfo();
     }
 
+    public bool LoadModule(Type moduleType)
+    {
+        if (LoadedModules.Any(x => x.Type.FullName == moduleType.FullName)) return false;
+
+        ModuleInfo? module = ModuleInfo.FromType(moduleType);
+        if (module is null) return false;
+
+        LoadedModules.Add(module);
+        LoadedCommands.AddRange(module.Commands);
+
+        return true;
+    }
+    public bool LoadModule<T>() => LoadModule(typeof(T));
+    public int LoadModules(Assembly moduleAssembly)
+    {
+        int loaded = 0;
+        foreach (Type moduleType in moduleAssembly.GetTypes()) if (LoadModule(moduleType)) loaded++;
+        return loaded;
+    }
+
     public void AddHistory(HistoryItem item) => History.Add(item);
     public void UndoItem()
     {
@@ -229,12 +249,12 @@ public class Shell
                     catch (TargetInvocationException ex)
                     {
                         Write($"[ERROR] {ex.InnerException!.Message}", ConsoleColor.Red);
-                        if (LoadingBarEnabled) LoadingBarEnd();
+                        if (LoadingBar.Enabled) LoadingBar.End();
                     }
                     catch (Exception ex)
                     {
                         Write($"[ERROR] {ex.Message}", ConsoleColor.Red);
-                        if (LoadingBarEnabled) LoadingBarEnd();
+                        if (LoadingBar.Enabled) LoadingBar.End();
                     }
 #endif
                 }
@@ -255,6 +275,8 @@ public class Shell
 
                 if (ShellDirectory is null) Write("[WARNING] Could not save config to shell location. Any changes will be ignored.");
                 else Config.SaveConfig(ShellDirectory);
+
+                ReloadDirectoryInfo();
                 return;
             }
         }
