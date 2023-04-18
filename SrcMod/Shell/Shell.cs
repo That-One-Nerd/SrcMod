@@ -270,6 +270,8 @@ public class Shell
                     activeCommand.Dispose();
                     activeCommand = null;
                 }
+
+                ReloadDirectoryInfo();
                 return;
             }
         }
