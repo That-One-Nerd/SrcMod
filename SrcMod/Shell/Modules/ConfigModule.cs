@@ -157,8 +157,9 @@ public static class ConfigModule
             Write(new string(' ', indents * 4) + "]", ConsoleColor.DarkGray, newLine);
         }
         else if (item is byte itemByte) Write($"0x{itemByte:X2}", ConsoleColor.Yellow, newLine);
-        else if (item is sbyte or short or ushort or int or uint or long or ulong)
+        else if (item is sbyte or short or ushort or int or uint or long or ulong or float or double or decimal)
             Write(item, ConsoleColor.Yellow, newLine);
+        else if (item is bool itemBool) Write(item, itemBool ? ConsoleColor.Green : ConsoleColor.Red, newLine);
         else if (item is char)
         {
             Write("\'", ConsoleColor.DarkGray, false);
