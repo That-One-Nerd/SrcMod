@@ -4,7 +4,7 @@ public class Config
 {
     public const string FilePath = "config.json";
 
-    public static readonly Config Defaults;
+    public static Config Defaults => (Config)p_defaults.MemberwiseClone();
 
     public static Config LoadedConfig
     {
@@ -19,9 +19,11 @@ public class Config
     private static Config p_applied;
     private static ConfigChanges? p_changes;
 
+    private static readonly Config p_defaults;
+
     static Config()
     {
-        Defaults = new()
+        p_defaults = new()
         {
             GameDirectories = Array.Empty<string>(),
             RunUnsafeCommands = AskMode.Ask

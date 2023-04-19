@@ -72,26 +72,17 @@ public static class ConfigModule
     [Command("reset")]
     public static void ResetConfig(string name = "all")
     {
-        Config config = Config.LoadedConfig;
-
         switch (name.Trim().ToLower())
         {
-            case "gamedirectories":
-                config.GameDirectories = Config.Defaults.GameDirectories;
-                break;
-
-            case "rununsafecommands":
-                config.RunUnsafeCommands = Config.Defaults.RunUnsafeCommands;
-                break;
-
             case "all":
-                config = Config.Defaults;
+                Config.LoadedConfig = Config.Defaults;
+                DisplayConfig("all");
                 break;
 
-            default: throw new($"Unknown config variable \"{name}\"");
+            default:
+                ResetConfigVar(name);
+                break;
         }
-
-        Config.LoadedConfig = config;
     }
 
     [Command("set")]
@@ -199,5 +190,20 @@ public static class ConfigModule
     {
         string json = JsonConvert.SerializeObject(Config.LoadedConfig, Formatting.Indented);
         Write(json);
+    }
+
+    private static void ResetConfigVar(string name)
+    {
+        FieldInfo[] validFields = (from field in typeof(Config).GetFields()
+                                   let isPublic = field.IsPublic
+                                   let isStatic = field.IsStatic
+                                   where isPublic && !isStatic
+                                   select field).ToArray();
+
+        FieldInfo? chosenField = validFields.FirstOrDefault(x => x.Name.Trim().ToLower() == name.Trim().ToLower());
+        if (chosenField is null) throw new($"No valid config variable named \"{name}\".");
+
+        chosenField.SetValue(Config.LoadedConfig, chosenField.GetValue(Config.Defaults));
+        DisplayConfigItem(chosenField.GetValue(Config.LoadedConfig), name: chosenField.Name);
     }
 }
