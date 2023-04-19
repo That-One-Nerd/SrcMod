@@ -1,4 +1,6 @@
-﻿namespace SrcMod.Shell.Modules;
+﻿using SharpCompress;
+
+namespace SrcMod.Shell.Modules;
 
 [Module("config")]
 public static class ConfigModule
@@ -139,19 +141,27 @@ public static class ConfigModule
         Write(new string(' ', indents * 4), newLine: false);
         if (!string.IsNullOrWhiteSpace(name)) Write($"{name}: ", newLine: false);
 
-        if (item is Array itemArray)
+        if (item is IEnumerable itemEnumerable)
         {
-            if (itemArray.Length < 1)
+            // This is a bit inefficient.
+            int count = 0;
+            foreach (object _ in itemEnumerable) count++;
+
+            object[] itemData = new object[count];
+            count = 0;
+            foreach (object obj in itemEnumerable) itemData[count] = obj;
+
+            if (itemData.Length < 1)
             {
                 Write("[]", ConsoleColor.DarkGray, newLine);
                 return;
             }
 
             Write("[", ConsoleColor.DarkGray);
-            for (int i = 0; i < itemArray.Length; i++)
+            for (int i = 0; i < itemData.Length; i++)
             {
-                DisplayConfigItem(itemArray.GetValue(i), indents + 1, newLine: false);
-                if (i < itemArray.Length - 1) Write(',', newLine: false);
+                DisplayConfigItem(itemData.GetValue(i), indents + 1, newLine: false);
+                if (i < itemData.Length - 1) Write(',', newLine: false);
                 Write('\n', newLine: false);
             }
             Write(new string(' ', indents * 4) + "]", ConsoleColor.DarkGray, newLine);

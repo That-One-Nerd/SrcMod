@@ -7,6 +7,7 @@ global using SrcMod.Shell.Interop;
 global using SrcMod.Shell.Modules.ObjectModels;
 global using SrcMod.Shell.ObjectModels;
 global using System;
+global using System.Collections;
 global using System.Collections.Generic;
 global using System.ComponentModel;
 global using System.Diagnostics;
