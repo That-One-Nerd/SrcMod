@@ -1,6 +1,6 @@
 ﻿namespace SrcMod.Shell.ObjectModels;
 
-public struct Config
+public class Config
 {
     public const string FilePath = "config.json";
 
@@ -26,16 +26,26 @@ public struct Config
             GameDirectories = Array.Empty<string>(),
             RunUnsafeCommands = AskMode.Ask
         };
+        p_applied = Defaults;
     }
 
     public string[] GameDirectories;
     public AskMode RunUnsafeCommands;
 
-    public Config ApplyChanges(ConfigChanges changes) => this with
+    internal Config()
     {
-        GameDirectories = GameDirectories.Union(changes.GameDirectories ?? Array.Empty<string>()).ToArray(),
-        RunUnsafeCommands = changes.RunUnsafeCommands ?? RunUnsafeCommands
-    };
+        GameDirectories = Array.Empty<string>();
+    }
+
+    public Config ApplyChanges(ConfigChanges changes)
+    {
+        if (changes.GameDirectories is not null)
+            GameDirectories = GameDirectories.Union(changes.GameDirectories).ToArray();
+
+        if (changes.RunUnsafeCommands is not null) RunUnsafeCommands = changes.RunUnsafeCommands.Value;
+
+        return this;
+    }
     public ConfigChanges GetChanges(Config? baseConfig = null)
     {
         Config reference = baseConfig ?? Defaults;
@@ -65,21 +75,23 @@ public struct Config
         jsonReader.Close();
         reader.Close();
 
-        p_applied = p_changes is null ? Defaults : Defaults.ApplyChanges(p_changes.Value);
+        p_applied = p_changes is null ? Defaults : Defaults.ApplyChanges(p_changes);
     }
     public static void SaveConfig(string basePath)
     {
         string fullPath = Path.Combine(basePath, FilePath);
 
-        if (p_changes is null || !p_changes.Value.HasChange)
+        if (p_changes is null || !p_changes.HasChange)
         {
             if (File.Exists(fullPath)) File.Delete(fullPath);
             return;
         }
 
         StreamWriter writer = new(fullPath);
-        JsonTextWriter jsonWriter = new(writer);
-        jsonWriter.Indentation = 4;
+        JsonTextWriter jsonWriter = new(writer)
+        {
+            Indentation = 4
+        };
         Serializer.Serialize(jsonWriter, p_changes);
         jsonWriter.Close();
         writer.Close();

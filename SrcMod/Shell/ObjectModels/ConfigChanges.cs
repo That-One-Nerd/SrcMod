@@ -1,6 +1,6 @@
 ﻿namespace SrcMod.Shell.ObjectModels;
 
-public record struct ConfigChanges
+public record class ConfigChanges
 {
     [JsonIgnore]
     public bool HasChange => GameDirectories is not null || RunUnsafeCommands is not null;

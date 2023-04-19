@@ -97,32 +97,24 @@ public static class ConfigModule
     [Command("set")]
     public static void SetConfigVariable(string name, string value)
     {
-        Config config = Config.LoadedConfig;
+        FieldInfo[] validFields = (from field in typeof(Config).GetFields()
+                                   let isPublic = field.IsPublic
+                                   let isStatic = field.IsStatic
+                                   where isPublic && !isStatic
+                                   select field).ToArray();
 
-        switch (name.Trim().ToLower())
-        {
-            case "gamedirectories":
-                throw new($"The config variable \"{name}\" is a list and must be added or removed to.");
+        FieldInfo? chosenField = validFields.FirstOrDefault(x => x.Name.Trim().ToLower() == name.Trim().ToLower());
+        if (chosenField is null) throw new($"No valid config variable named \"{name}\".");
+        else if (chosenField.FieldType.IsArray) throw new($"The variable \"{name}\" is an array and cannot be" +
+                                                           " directly set. Instead, add or remove items from it.");
 
-            case "rununsafecommands":
-                if (int.TryParse(value, out int intRes))
-                {
-                    AskMode mode = (AskMode)intRes;
-                    if (!Enum.IsDefined(mode)) throw new($"(AskMode){value} is not a valid AskMode.");
-                    config.RunUnsafeCommands = mode;
-                }
-                else if (Enum.TryParse(value, true, out AskMode modeRes))
-                {
-                    if (!Enum.IsDefined(modeRes)) throw new($"\"{value}\" is not a valid AskMode.");
-                    config.RunUnsafeCommands = modeRes;
-                }
-                else throw new($"\"{value}\" is not a valid AskMode.");
-                break;
+        object parsed = TypeParsers.ParseAll(value);
+        if (parsed is string parsedStr
+            && chosenField.FieldType.IsEnum
+            && Enum.TryParse(chosenField.FieldType, parsedStr, true, out object? obj)) parsed = obj;
 
-            default: throw new($"Unknown config variable \"{name}\"");
-        }
-
-        Config.LoadedConfig = config;
+        chosenField.SetValue(Config.LoadedConfig, parsed);
+        DisplayConfigItem(chosenField.GetValue(Config.LoadedConfig), name: chosenField.Name);
     }
 
     private static void DisplayConfigAll()
