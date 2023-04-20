@@ -29,21 +29,30 @@ public static class ConfigModule
     [Command("append")]
     public static void AppendConfigVariable(string name, string value)
     {
-        Config config = Config.LoadedConfig;
+        FieldInfo[] validFields = (from field in typeof(Config).GetFields()
+                                   let isPublic = field.IsPublic
+                                   let isStatic = field.IsStatic
+                                   where isPublic && !isStatic
+                                   select field).ToArray();
 
-        switch (name.Trim().ToLower())
-        {
-            case "gamedirectories":
-                config.GameDirectories = config.GameDirectories.Append(value).ToArray();
-                break;
+        FieldInfo? chosenField = validFields.FirstOrDefault(x => x.Name.Trim().ToLower() == name.Trim().ToLower());
+        if (chosenField is null) throw new($"No valid config variable named \"{name}\".");
+        else if (!chosenField.FieldType.IsArray) throw new($"The variable \"{chosenField.Name}\" is not an array" +
+                                                            " and cannot have data added or removed from it." +
+                                                            " Instead, set or reset the variable.");
 
-            case "rununsafecommands":
-                throw new($"The config variable \"{name}\" is a single variable and cannot be appended to.");
+        object parsed = TypeParsers.ParseAll(value);
+        if (parsed is string parsedStr
+            && chosenField.FieldType.IsEnum
+            && Enum.TryParse(chosenField.FieldType, parsedStr, true, out object? obj)) parsed = obj;
 
-            default: throw new($"Unknown config variable \"{name}\"");
-        }
+        Type arrayType = chosenField.FieldType.GetElementType()!;
 
-        Config.LoadedConfig = config;
+        Array arrayValue = (Array)chosenField.GetValue(Config.LoadedConfig)!;
+        ArrayList collection = new(arrayValue) { parsed };
+
+        chosenField.SetValue(Config.LoadedConfig, collection.ToArray()!.CastArray(arrayType));
+        DisplayConfigItem(chosenField.GetValue(Config.LoadedConfig), name: chosenField.Name);
     }
 
     [Command("delete")]
@@ -96,8 +105,9 @@ public static class ConfigModule
 
         FieldInfo? chosenField = validFields.FirstOrDefault(x => x.Name.Trim().ToLower() == name.Trim().ToLower());
         if (chosenField is null) throw new($"No valid config variable named \"{name}\".");
-        else if (chosenField.FieldType.IsArray) throw new($"The variable \"{name}\" is an array and cannot be" +
-                                                           " directly set. Instead, add or remove items from it.");
+        else if (chosenField.FieldType.IsArray) throw new($"The variable \"{chosenField.Name}\" is an array and" +
+                                                           " cannot be directly set. Instead, add or remove items" +
+                                                           " from it.");
 
         object parsed = TypeParsers.ParseAll(value);
         if (parsed is string parsedStr
@@ -124,27 +134,20 @@ public static class ConfigModule
         Write(new string(' ', indents * 4), newLine: false);
         if (!string.IsNullOrWhiteSpace(name)) Write($"{name}: ", newLine: false);
 
-        if (item is IEnumerable itemEnumerable)
+        if (item is null) Write("null", ConsoleColor.DarkRed, newLine);
+        else if (item is Array itemArray)
         {
-            // This is a bit inefficient.
-            int count = 0;
-            foreach (object _ in itemEnumerable) count++;
-
-            object[] itemData = new object[count];
-            count = 0;
-            foreach (object obj in itemEnumerable) itemData[count] = obj;
-
-            if (itemData.Length < 1)
+            if (itemArray.Length < 1)
             {
                 Write("[]", ConsoleColor.DarkGray, newLine);
                 return;
             }
 
             Write("[", ConsoleColor.DarkGray);
-            for (int i = 0; i < itemData.Length; i++)
+            for (int i = 0; i < itemArray.Length; i++)
             {
-                DisplayConfigItem(itemData.GetValue(i), indents + 1, newLine: false);
-                if (i < itemData.Length - 1) Write(',', newLine: false);
+                DisplayConfigItem(itemArray.GetValue(i), indents + 1, newLine: false);
+                if (i < itemArray.Length - 1) Write(',', newLine: false);
                 Write('\n', newLine: false);
             }
             Write(new string(' ', indents * 4) + "]", ConsoleColor.DarkGray, newLine);
