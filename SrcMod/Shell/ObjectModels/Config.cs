@@ -4,7 +4,7 @@ public class Config
 {
     public const string FilePath = "config.json";
 
-    public static Config Defaults => (Config)p_defaults.MemberwiseClone();
+    public static Config Defaults => new();
 
     public static Config LoadedConfig
     {
@@ -12,22 +12,15 @@ public class Config
         set
         {
             p_applied = value;
-            p_changes = p_applied.GetChanges(Defaults);
+            UpdateChanges();
         }
     }
 
     private static Config p_applied;
-    private static ConfigChanges? p_changes;
-
-    private static readonly Config p_defaults;
+    private static Changes? p_changes;
 
     static Config()
     {
-        p_defaults = new()
-        {
-            GameDirectories = Array.Empty<string>(),
-            RunUnsafeCommands = AskMode.Ask
-        };
         p_applied = Defaults;
     }
 
@@ -37,9 +30,10 @@ public class Config
     internal Config()
     {
         GameDirectories = Array.Empty<string>();
+        RunUnsafeCommands = AskMode.Ask;
     }
 
-    public Config ApplyChanges(ConfigChanges changes)
+    public Config ApplyChanges(Changes changes)
     {
         if (changes.GameDirectories is not null)
             GameDirectories = GameDirectories.Union(changes.GameDirectories).ToArray();
@@ -48,10 +42,10 @@ public class Config
 
         return this;
     }
-    public ConfigChanges GetChanges(Config? baseConfig = null)
+    public Changes GetChanges(Config? baseConfig = null)
     {
         Config reference = baseConfig ?? Defaults;
-        ConfigChanges changes = new()
+        Changes changes = new()
         {
             GameDirectories = reference.GameDirectories == GameDirectories ? null :
                 GameDirectories.Where(x => !reference.GameDirectories.Contains(x)).ToArray(),
@@ -73,7 +67,7 @@ public class Config
         }
         StreamReader reader = new(fullPath);
         JsonTextReader jsonReader = new(reader);
-        p_changes = Serializer.Deserialize<ConfigChanges?>(jsonReader);
+        p_changes = Serializer.Deserialize<Changes?>(jsonReader);
         jsonReader.Close();
         reader.Close();
 
@@ -83,7 +77,7 @@ public class Config
     {
         string fullPath = Path.Combine(basePath, FilePath);
 
-        if (p_changes is null || !p_changes.HasChange)
+        if (p_changes is null || !p_changes.Any())
         {
             if (File.Exists(fullPath)) File.Delete(fullPath);
             return;
@@ -97,5 +91,18 @@ public class Config
         Serializer.Serialize(jsonWriter, p_changes);
         jsonWriter.Close();
         writer.Close();
+    }
+
+    public static void UpdateChanges()
+    {
+        p_changes = p_applied.GetChanges(Defaults);
+    }
+
+    public class Changes
+    {
+        public string[]? GameDirectories;
+        public AskMode? RunUnsafeCommands;
+
+        public bool Any() => typeof(Changes).GetFields().Any(x => x.GetValue(this) is not null);
     }
 }

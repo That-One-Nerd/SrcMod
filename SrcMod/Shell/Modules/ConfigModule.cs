@@ -52,6 +52,7 @@ public static class ConfigModule
         ArrayList collection = new(arrayValue) { parsed };
 
         chosenField.SetValue(Config.LoadedConfig, collection.ToArray()!.CastArray(arrayType));
+        Config.UpdateChanges();
         DisplayConfigItem(chosenField.GetValue(Config.LoadedConfig), name: chosenField.Name);
     }
 
@@ -84,6 +85,7 @@ public static class ConfigModule
         collection.Remove(parsed);
 
         chosenField.SetValue(Config.LoadedConfig, collection.ToArray()!.CastArray(arrayType));
+        Config.UpdateChanges();
         DisplayConfigItem(chosenField.GetValue(Config.LoadedConfig), name: chosenField.Name);
     }
 
@@ -124,6 +126,7 @@ public static class ConfigModule
             && Enum.TryParse(chosenField.FieldType, parsedStr, true, out object? obj)) parsed = obj;
 
         chosenField.SetValue(Config.LoadedConfig, parsed);
+        Config.UpdateChanges();
         DisplayConfigItem(chosenField.GetValue(Config.LoadedConfig), name: chosenField.Name);
     }
 
@@ -216,6 +219,7 @@ public static class ConfigModule
         if (chosenField is null) throw new($"No valid config variable named \"{name}\".");
 
         chosenField.SetValue(Config.LoadedConfig, chosenField.GetValue(Config.Defaults));
+        Config.UpdateChanges();
         DisplayConfigItem(chosenField.GetValue(Config.LoadedConfig), name: chosenField.Name);
     }
 }
