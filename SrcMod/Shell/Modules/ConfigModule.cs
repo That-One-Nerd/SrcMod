@@ -59,23 +59,32 @@ public static class ConfigModule
     [Command("remove")]
     public static void RemoveConfigVariable(string name, string value)
     {
-        Config config = Config.LoadedConfig;
+        FieldInfo[] validFields = (from field in typeof(Config).GetFields()
+                                   let isPublic = field.IsPublic
+                                   let isStatic = field.IsStatic
+                                   where isPublic && !isStatic
+                                   select field).ToArray();
 
-        switch (name.Trim().ToLower())
-        {
-            case "gamedirectories":
-                config.GameDirectories = config.GameDirectories
-                    .Where(x => x.Trim().ToLower() != value.Trim().ToLower())
-                    .ToArray();
-                break;
+        FieldInfo? chosenField = validFields.FirstOrDefault(x => x.Name.Trim().ToLower() == name.Trim().ToLower());
+        if (chosenField is null) throw new($"No valid config variable named \"{name}\".");
+        else if (!chosenField.FieldType.IsArray) throw new($"The variable \"{chosenField.Name}\" is not an array" +
+                                                            " and cannot have data added or removed from it." +
+                                                            " Instead, set or reset the variable.");
 
-            case "rununsafecommands":
-                throw new($"The config variable \"{name}\" is a single variable and cannot be appended to.");
+        object parsed = TypeParsers.ParseAll(value);
+        if (parsed is string parsedStr
+            && chosenField.FieldType.IsEnum
+            && Enum.TryParse(chosenField.FieldType, parsedStr, true, out object? obj)) parsed = obj;
 
-            default: throw new($"Unknown config variable \"{name}\"");
-        }
+        Type arrayType = chosenField.FieldType.GetElementType()!;
 
-        Config.LoadedConfig = config;
+        Array arrayValue = (Array)chosenField.GetValue(Config.LoadedConfig)!;
+        ArrayList collection = new(arrayValue);
+        if (!collection.Contains(parsed)) throw new($"The value \"{value}\" is not contained in this variable.");
+        collection.Remove(parsed);
+
+        chosenField.SetValue(Config.LoadedConfig, collection.ToArray()!.CastArray(arrayType));
+        DisplayConfigItem(chosenField.GetValue(Config.LoadedConfig), name: chosenField.Name);
     }
 
     [Command("reset")]
