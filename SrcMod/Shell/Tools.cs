@@ -1,8 +1,6 @@
-﻿using System.Text;
+﻿namespace SrcMod.Shell;
 
-namespace SrcMod.Shell;
-
-internal static class Tools
+public static class Tools
 {
     public static void DisplayWithPages(IEnumerable<string> lines, ConsoleColor? color = null)
     {
