@@ -1,12 +1,10 @@
-﻿using System.ComponentModel;
-
-namespace SrcMod.Shell;
+﻿namespace SrcMod.Shell;
 
 public class Shell
 {
     public const string Author = "That_One_Nerd";
     public const string Name = "SrcMod";
-    public const string Version = "Alpha 0.3.2";
+    public const string Version = "Alpha 0.3.3";
 
     public readonly string? ShellDirectory;
 
@@ -49,6 +47,10 @@ public class Shell
         }
 
         WorkingDirectory = Directory.GetCurrentDirectory();
+
+        // Load config.
+        if (ShellDirectory is null) Write("[WARNING] Could not load config from shell location. Defaults will be used.");
+        else Config.LoadConfig(ShellDirectory);
 
         // Load modules and commands.
         List<Assembly?> possibleAsms = new()
@@ -273,6 +275,9 @@ public class Shell
                     activeCommand.Dispose();
                     activeCommand = null;
                 }
+
+                if (ShellDirectory is null) Write("[WARNING] Could not save config to shell location. Any changes will be ignored.");
+                else Config.SaveConfig(ShellDirectory);
 
                 ReloadDirectoryInfo();
                 return;

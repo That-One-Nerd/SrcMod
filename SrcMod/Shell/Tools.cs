@@ -2,6 +2,17 @@
 
 public static class Tools
 {
+    public static JsonSerializer Serializer { get; private set; }
+
+    static Tools()
+    {
+        Serializer = JsonSerializer.Create(new()
+        {
+            Formatting = Formatting.Indented,
+            NullValueHandling = NullValueHandling.Ignore
+        });
+    }
+
     public static void DisplayWithPages(IEnumerable<string> lines, ConsoleColor? color = null)
     {
         int written = 0;
@@ -82,15 +93,36 @@ public static class Tools
 
     public static bool ValidateUnsafe()
     {
-        Write("You are about to execute an unsafe command.\nProceed? > ", ConsoleColor.DarkYellow, false);
+        switch (Config.LoadedConfig.RunUnsafeCommands)
+        {
+            case AskMode.Always:
+                Write("[INFO] The shell has been configured to always run unsafe commands. " +
+                      "This can be changed in the config.", ConsoleColor.DarkGray);
+                return true;
 
-        Console.ForegroundColor = ConsoleColor.Yellow;
-        Console.CursorVisible = true;
-        string result = Console.ReadLine()!.Trim().ToLower();
-        Console.CursorVisible = false;
-        Console.ResetColor();
+            case AskMode.Never:
+                Write("[ERROR] The shell has been configured to never run unsafe commands. " +
+                      "This can be changed in the config.", ConsoleColor.Red);
+                return false;
 
-        return result == "y" || result == "yes" || result == "t" ||
-               result == "true" || result == "p" || result == "proceed";
+            case AskMode.Ask or _:
+                Write("You are about to execute an unsafe command.\nProceed? > ", ConsoleColor.DarkYellow, false);
+                Int2 start = (Console.CursorLeft, Console.CursorTop);
+                Write("\nTip: You can disable this dialog in the config.", ConsoleColor.DarkGray);
+                int finish = Console.CursorTop;
+
+                Console.SetCursorPosition(start.x, start.y);
+
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.CursorVisible = true;
+                string result = Console.ReadLine()!.Trim().ToLower();
+                Console.CursorVisible = false;
+                Console.ResetColor();
+
+                Console.SetCursorPosition(0, finish);
+
+                return result == "y" || result == "yes" || result == "t" ||
+                       result == "true" || result == "p" || result == "proceed";
+        }
     }
 }

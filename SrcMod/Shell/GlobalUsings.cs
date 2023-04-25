@@ -1,12 +1,14 @@
 ﻿global using Nerd_STF.Mathematics;
+global using Newtonsoft.Json;
 global using SharpCompress.Archives.Rar;
 global using SharpCompress.Archives.SevenZip;
 global using SharpCompress.Readers;
-global using SrcMod.Shell;
 global using SrcMod.Shell.Interop;
 global using SrcMod.Shell.Modules.ObjectModels;
+global using SrcMod.Shell.ObjectModels;
 global using System;
 global using System.Collections.Generic;
+global using System.ComponentModel;
 global using System.Diagnostics;
 global using System.Formats.Tar;
 global using System.IO;
