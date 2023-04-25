@@ -17,4 +17,17 @@ public static class ConversionExtension
         for (int i = 0; i < obj.Length; i++) result.SetValue(obj[i].Cast<T>(), i);
         return (T[])result;
     }
+
+    public static object CastArray(this Array obj, Type newElementType)
+    {
+        Array result = Array.CreateInstance(newElementType, obj.Length);
+        for (int i = 0; i < obj.Length; i++) result.SetValue(obj.GetValue(i)!.Cast(newElementType), i);
+        return result;
+    }
+    public static T[] CastArray<T>(this Array obj)
+    {
+        Array result = Array.CreateInstance(typeof(T), obj.Length);
+        for (int i = 0; i < obj.Length; i++) result.SetValue(obj.GetValue(i)!.Cast<T>(), i);
+        return (T[])result;
+    }
 }

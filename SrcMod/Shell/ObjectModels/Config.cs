@@ -6,6 +6,9 @@ public class Config
 
     public static Config Defaults => new();
 
+    private static readonly FieldInfo[] p_configSharedFields;
+    private static readonly FieldInfo[] p_changeSharedFields;
+
     public static Config LoadedConfig
     {
         get => p_applied;
@@ -22,6 +25,39 @@ public class Config
     static Config()
     {
         p_applied = Defaults;
+
+        FieldInfo[] configFields = (from field in typeof(Config).GetFields()
+                                    let isPublic = field.IsPublic
+                                    let isStatic = field.IsStatic
+                                    where isPublic && !isStatic
+                                    select field).ToArray(),
+                    changeFields = (from field in typeof(Changes).GetFields()
+                                    let isPublic = field.IsPublic
+                                    let isStatic = field.IsStatic
+                                    where isPublic && !isStatic
+                                    select field).ToArray();
+
+        List<FieldInfo> sharedConfigFields = new(),
+                        sharedChangeFields = new();
+        foreach (FieldInfo field in configFields)
+        {
+            FieldInfo? changeEquivalent = changeFields.FirstOrDefault(
+                x => x.Name == field.Name &&
+                (x.FieldType == field.FieldType || Nullable.GetUnderlyingType(x.FieldType) == field.FieldType));
+
+            if (changeEquivalent is null) continue;
+
+            sharedConfigFields.Add(field);
+            sharedChangeFields.Add(changeEquivalent);
+        }
+
+        static int sortByName(FieldInfo a, FieldInfo b) => a.Name.CompareTo(b.Name);
+
+        sharedConfigFields.Sort(sortByName);
+        sharedChangeFields.Sort(sortByName);
+
+        p_configSharedFields = sharedConfigFields.ToArray();
+        p_changeSharedFields = sharedChangeFields.ToArray();
     }
 
     public string[] GameDirectories;
@@ -35,22 +71,51 @@ public class Config
 
     public Config ApplyChanges(Changes changes)
     {
-        if (changes.GameDirectories is not null)
-            GameDirectories = GameDirectories.Union(changes.GameDirectories).ToArray();
+        for (int i = 0; i < p_configSharedFields.Length; i++) 
+        {
+            FieldInfo configField = p_configSharedFields[i],
+                      changeField = p_changeSharedFields[i];
 
-        if (changes.RunUnsafeCommands is not null) RunUnsafeCommands = changes.RunUnsafeCommands.Value;
+            object? toChange = changeField.GetValue(changes);
+
+            if (toChange is null) continue;
+
+            if (configField.FieldType.IsArray)
+            {
+                object[] currentArray = ((Array)configField.GetValue(this)!).CastArray<object>(),
+                         changeArray = ((Array)toChange).CastArray<object>();
+
+                currentArray = currentArray.Union(changeArray).ToArray();
+                configField.SetValue(this, currentArray.CastArray(configField.FieldType.GetElementType()!));
+            }
+            else configField.SetValue(this, toChange);
+        }
 
         return this;
     }
-    public Changes GetChanges(Config? baseConfig = null)
+    public Changes GetChanges(Config? reference = null)
     {
-        Config reference = baseConfig ?? Defaults;
-        Changes changes = new()
+        reference ??= Defaults;
+        Changes changes = new();
+
+        for (int i = 0; i < p_configSharedFields.Length; i++)
         {
-            GameDirectories = reference.GameDirectories == GameDirectories ? null :
-                GameDirectories.Where(x => !reference.GameDirectories.Contains(x)).ToArray(),
-            RunUnsafeCommands = reference.RunUnsafeCommands == RunUnsafeCommands ? null : RunUnsafeCommands
-        };
+            FieldInfo configField = p_configSharedFields[i],
+                      changeField = p_changeSharedFields[i];
+
+            object? toSet = configField.GetValue(this);
+
+            if (toSet is null) continue;
+
+            if (configField.FieldType.IsArray)
+            {
+                object[] configArray = ((Array)toSet).CastArray<object>(),
+                         referenceArray = ((Array)configField.GetValue(Defaults)!).CastArray<object>(),
+                         changesArray = configArray.Where(x => !referenceArray.Contains(x)).ToArray();
+                changeField.SetValue(changes, changesArray.CastArray(configField.FieldType.GetElementType()!));
+            }
+            else changeField.SetValue(changes, toSet);
+        }
 
         return changes;
     }
