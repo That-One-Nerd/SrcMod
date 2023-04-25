@@ -1,6 +1,6 @@
 ﻿namespace SrcMod.Shell;
 
-internal static class Tools
+public static class Tools
 {
     public static JsonSerializer Serializer { get; private set; }
 

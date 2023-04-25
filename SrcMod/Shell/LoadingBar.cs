@@ -1,6 +1,6 @@
 ﻿namespace SrcMod.Shell;
 
-internal static class LoadingBar
+public static class LoadingBar
 {
     public static int position = -1;
     public static int bufferSize = 0;
