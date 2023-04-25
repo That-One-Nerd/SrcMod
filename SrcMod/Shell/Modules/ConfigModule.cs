@@ -1,28 +1,26 @@
-﻿namespace SrcMod.Shell.Modules;
+﻿using SharpCompress;
+
+namespace SrcMod.Shell.Modules;
 
 [Module("config")]
 public static class ConfigModule
 {
     [Command("display")]
     [Command("list")]
-    public static void DisplayConfig(ConfigDisplayMode mode = ConfigDisplayMode.All)
+    public static void DisplayConfig(string display = "all")
     {
-        switch (mode)
+        switch (display.Trim().ToLower())
         {
-            case ConfigDisplayMode.Raw:
-                DisplayConfigRaw();
-                break;
-
-            case ConfigDisplayMode.All:
+            case "all":
                 DisplayConfigAll();
                 break;
 
-            case ConfigDisplayMode.GameDirectories:
-                DisplayConfigGameDirectories();
+            case "raw":
+                DisplayConfigRaw();
                 break;
 
-            case ConfigDisplayMode.RunUnsafeCommands:
-                DisplayConfigUnsafeCommands();
+            default:
+                DisplayConfigName(display);
                 break;
         }
     }
@@ -31,164 +29,197 @@ public static class ConfigModule
     [Command("append")]
     public static void AppendConfigVariable(string name, string value)
     {
-        Config config = Config.LoadedConfig;
+        FieldInfo[] validFields = (from field in typeof(Config).GetFields()
+                                   let isPublic = field.IsPublic
+                                   let isStatic = field.IsStatic
+                                   where isPublic && !isStatic
+                                   select field).ToArray();
 
-        switch (name.Trim().ToLower())
-        {
-            case "gamedirectories":
-                config.GameDirectories = config.GameDirectories.Append(value).ToArray();
-                break;
+        FieldInfo? chosenField = validFields.FirstOrDefault(x => x.Name.Trim().ToLower() == name.Trim().ToLower());
+        if (chosenField is null) throw new($"No valid config variable named \"{name}\".");
+        else if (!chosenField.FieldType.IsArray) throw new($"The variable \"{chosenField.Name}\" is not an array" +
+                                                            " and cannot have data added or removed from it." +
+                                                            " Instead, set or reset the variable.");
 
-            case "rununsafecommands":
-                throw new($"The config variable \"{name}\" is a single variable and cannot be appended to.");
+        object parsed = TypeParsers.ParseAll(value);
+        if (parsed is string parsedStr
+            && chosenField.FieldType.IsEnum
+            && Enum.TryParse(chosenField.FieldType, parsedStr, true, out object? obj)) parsed = obj;
 
-            default: throw new($"Unknown config variable \"{name}\"");
-        }
+        Type arrayType = chosenField.FieldType.GetElementType()!;
 
-        Config.LoadedConfig = config;
+        Array arrayValue = (Array)chosenField.GetValue(Config.LoadedConfig)!;
+        ArrayList collection = new(arrayValue) { parsed };
+
+        chosenField.SetValue(Config.LoadedConfig, collection.ToArray()!.CastArray(arrayType));
+        Config.UpdateChanges();
+        DisplayConfigItem(chosenField.GetValue(Config.LoadedConfig), name: chosenField.Name);
     }
 
     [Command("delete")]
     [Command("remove")]
     public static void RemoveConfigVariable(string name, string value)
     {
-        Config config = Config.LoadedConfig;
+        FieldInfo[] validFields = (from field in typeof(Config).GetFields()
+                                   let isPublic = field.IsPublic
+                                   let isStatic = field.IsStatic
+                                   where isPublic && !isStatic
+                                   select field).ToArray();
 
-        switch (name.Trim().ToLower())
-        {
-            case "gamedirectories":
-                config.GameDirectories = config.GameDirectories
-                    .Where(x => x.Trim().ToLower() != value.Trim().ToLower())
-                    .ToArray();
-                break;
+        FieldInfo? chosenField = validFields.FirstOrDefault(x => x.Name.Trim().ToLower() == name.Trim().ToLower());
+        if (chosenField is null) throw new($"No valid config variable named \"{name}\".");
+        else if (!chosenField.FieldType.IsArray) throw new($"The variable \"{chosenField.Name}\" is not an array" +
+                                                            " and cannot have data added or removed from it." +
+                                                            " Instead, set or reset the variable.");
 
-            case "rununsafecommands":
-                throw new($"The config variable \"{name}\" is a single variable and cannot be appended to.");
+        object parsed = TypeParsers.ParseAll(value);
+        if (parsed is string parsedStr
+            && chosenField.FieldType.IsEnum
+            && Enum.TryParse(chosenField.FieldType, parsedStr, true, out object? obj)) parsed = obj;
 
-            default: throw new($"Unknown config variable \"{name}\"");
-        }
+        Type arrayType = chosenField.FieldType.GetElementType()!;
 
-        Config.LoadedConfig = config;
+        Array arrayValue = (Array)chosenField.GetValue(Config.LoadedConfig)!;
+        ArrayList collection = new(arrayValue);
+        if (!collection.Contains(parsed)) throw new($"The value \"{value}\" is not contained in this variable.");
+        collection.Remove(parsed);
+
+        chosenField.SetValue(Config.LoadedConfig, collection.ToArray()!.CastArray(arrayType));
+        Config.UpdateChanges();
+        DisplayConfigItem(chosenField.GetValue(Config.LoadedConfig), name: chosenField.Name);
     }
 
     [Command("reset")]
     public static void ResetConfig(string name = "all")
     {
-        Config config = Config.LoadedConfig;
-
         switch (name.Trim().ToLower())
         {
-            case "gamedirectories":
-                config.GameDirectories = Config.Defaults.GameDirectories;
-                break;
-
-            case "rununsafecommands":
-                config.RunUnsafeCommands = Config.Defaults.RunUnsafeCommands;
-                break;
-
             case "all":
-                config = Config.Defaults;
+                Config.LoadedConfig = Config.Defaults;
+                DisplayConfig("all");
                 break;
 
-            default: throw new($"Unknown config variable \"{name}\"");
+            default:
+                ResetConfigVar(name);
+                break;
         }
-
-        Config.LoadedConfig = config;
     }
 
     [Command("set")]
     public static void SetConfigVariable(string name, string value)
     {
-        Config config = Config.LoadedConfig;
+        FieldInfo[] validFields = (from field in typeof(Config).GetFields()
+                                   let isPublic = field.IsPublic
+                                   let isStatic = field.IsStatic
+                                   where isPublic && !isStatic
+                                   select field).ToArray();
 
-        switch (name.Trim().ToLower())
-        {
-            case "gamedirectories":
-                throw new($"The config variable \"{name}\" is a list and must be added or removed to.");
+        FieldInfo? chosenField = validFields.FirstOrDefault(x => x.Name.Trim().ToLower() == name.Trim().ToLower());
+        if (chosenField is null) throw new($"No valid config variable named \"{name}\".");
+        else if (chosenField.FieldType.IsArray) throw new($"The variable \"{chosenField.Name}\" is an array and" +
+                                                           " cannot be directly set. Instead, add or remove items" +
+                                                           " from it.");
 
-            case "rununsafecommands":
-                if (int.TryParse(value, out int intRes))
-                {
-                    AskMode mode = (AskMode)intRes;
-                    if (!Enum.IsDefined(mode)) throw new($"(AskMode){value} is not a valid AskMode.");
-                    config.RunUnsafeCommands = mode;
-                }
-                else if (Enum.TryParse(value, true, out AskMode modeRes))
-                {
-                    if (!Enum.IsDefined(modeRes)) throw new($"\"{value}\" is not a valid AskMode.");
-                    config.RunUnsafeCommands = modeRes;
-                }
-                else throw new($"\"{value}\" is not a valid AskMode.");
-                break;
+        object parsed = TypeParsers.ParseAll(value);
+        if (parsed is string parsedStr
+            && chosenField.FieldType.IsEnum
+            && Enum.TryParse(chosenField.FieldType, parsedStr, true, out object? obj)) parsed = obj;
 
-            default: throw new($"Unknown config variable \"{name}\"");
-        }
-
-        Config.LoadedConfig = config;
+        chosenField.SetValue(Config.LoadedConfig, parsed);
+        Config.UpdateChanges();
+        DisplayConfigItem(chosenField.GetValue(Config.LoadedConfig), name: chosenField.Name);
     }
 
     private static void DisplayConfigAll()
     {
-        DisplayConfigGameDirectories();
-        DisplayConfigUnsafeCommands();
+        FieldInfo[] validFields = (from field in typeof(Config).GetFields()
+                                   let isPublic = field.IsPublic
+                                   let isStatic = field.IsStatic
+                                   where isPublic && !isStatic
+                                   select field).ToArray();
+
+        foreach (FieldInfo field in validFields)
+            DisplayConfigItem(field.GetValue(Config.LoadedConfig), name: field.Name);
     }
-    private static void DisplayConfigRaw()
+    private static void DisplayConfigItem<T>(T item, int indents = 0, string name = "", bool newLine = true)
     {
-        // This is definitely a bit inefficient, but shouldn't be too much of an issue.
+        Write(new string(' ', indents * 4), newLine: false);
+        if (!string.IsNullOrWhiteSpace(name)) Write($"{name}: ", newLine: false);
 
-        MemoryStream ms = new();
-        StreamWriter writer = new(ms, leaveOpen: true);
-        JsonTextWriter jsonWriter = new(writer);
-
-        Serializer.Serialize(jsonWriter, Config.LoadedConfig);
-
-        jsonWriter.Close();
-        writer.Close();
-        ms.Position = 0;
-
-        StreamReader reader = new(ms);
-        string msg = reader.ReadToEnd();
-
-        Write(msg);
-
-        reader.Close();
-        ms.Close();
-    }
-    private static void DisplayConfigGameDirectories()
-    {
-        Write("Steam Game Directories: ", null, false);
-        if (Config.LoadedConfig.GameDirectories is null || Config.LoadedConfig.GameDirectories.Length <= 0)
-            Write("None", ConsoleColor.DarkGray);
-        else
+        if (item is null) Write("null", ConsoleColor.DarkRed, newLine);
+        else if (item is Array itemArray)
         {
-            Write("[", ConsoleColor.DarkGray);
-            for (int i = 0; i < Config.LoadedConfig.GameDirectories.Length; i++)
+            if (itemArray.Length < 1)
             {
-                Write("    \"", ConsoleColor.DarkGray, false);
-                Write(Config.LoadedConfig.GameDirectories[i], ConsoleColor.White, false);
-                if (i < Config.LoadedConfig.GameDirectories.Length - 1) Write("\",", ConsoleColor.DarkGray);
-                else Write("\"", ConsoleColor.DarkGray);
+                Write("[]", ConsoleColor.DarkGray, newLine);
+                return;
             }
-            Write("]", ConsoleColor.DarkGray);
+
+            Write("[", ConsoleColor.DarkGray);
+            for (int i = 0; i < itemArray.Length; i++)
+            {
+                DisplayConfigItem(itemArray.GetValue(i), indents + 1, newLine: false);
+                if (i < itemArray.Length - 1) Write(',', newLine: false);
+                Write('\n', newLine: false);
+            }
+            Write(new string(' ', indents * 4) + "]", ConsoleColor.DarkGray, newLine);
         }
-    }
-    private static void DisplayConfigUnsafeCommands()
-    {
-        Write("Run Unsafe Commands: ", null, false);
-        ConsoleColor color = Config.LoadedConfig.RunUnsafeCommands switch
+        else if (item is byte itemByte) Write($"0x{itemByte:X2}", ConsoleColor.Yellow, newLine);
+        else if (item is sbyte or short or ushort or int or uint or long or ulong or float or double or decimal)
+            Write(item, ConsoleColor.Yellow, newLine);
+        else if (item is bool itemBool) Write(item, itemBool ? ConsoleColor.Green : ConsoleColor.Red, newLine);
+        else if (item is char)
+        {
+            Write("\'", ConsoleColor.DarkGray, false);
+            Write(item, ConsoleColor.Blue, false);
+            Write("\'", ConsoleColor.DarkGray, newLine);
+        }
+        else if (item is string)
+        {
+            Write("\"", ConsoleColor.DarkGray, false);
+            Write(item, ConsoleColor.DarkCyan, false);
+            Write("\"", ConsoleColor.DarkGray, newLine);
+        }
+        else if (item is AskMode) Write(item, item switch
         {
             AskMode.Never => ConsoleColor.Red,
             AskMode.Always => ConsoleColor.Green,
             AskMode.Ask or _ => ConsoleColor.DarkGray
-        };
-        Write(Config.LoadedConfig.RunUnsafeCommands, color);
+        }, newLine);
+        else Write(item, newLine: newLine);
+    }
+    private static void DisplayConfigName(string name)
+    {
+        FieldInfo[] validFields = (from field in typeof(Config).GetFields()
+                                   let isPublic = field.IsPublic
+                                   let isStatic = field.IsStatic
+                                   where isPublic && !isStatic
+                                   select field).ToArray();
+
+        FieldInfo? chosenField = validFields.FirstOrDefault(x => x.Name.Trim().ToLower() == name.Trim().ToLower());
+        if (chosenField is null) throw new($"No config variable named \"{name}\".");
+
+        DisplayConfigItem(chosenField.GetValue(Config.LoadedConfig), name: chosenField.Name);
+    }
+    private static void DisplayConfigRaw()
+    {
+        string json = JsonConvert.SerializeObject(Config.LoadedConfig, Formatting.Indented);
+        Write(json);
     }
 
-    public enum ConfigDisplayMode
+    private static void ResetConfigVar(string name)
     {
-        Raw,
-        All,
-        GameDirectories,
-        RunUnsafeCommands
+        FieldInfo[] validFields = (from field in typeof(Config).GetFields()
+                                   let isPublic = field.IsPublic
+                                   let isStatic = field.IsStatic
+                                   where isPublic && !isStatic
+                                   select field).ToArray();
+
+        FieldInfo? chosenField = validFields.FirstOrDefault(x => x.Name.Trim().ToLower() == name.Trim().ToLower());
+        if (chosenField is null) throw new($"No valid config variable named \"{name}\".");
+
+        chosenField.SetValue(Config.LoadedConfig, chosenField.GetValue(Config.Defaults));
+        Config.UpdateChanges();
+        DisplayConfigItem(chosenField.GetValue(Config.LoadedConfig), name: chosenField.Name);
     }
 }

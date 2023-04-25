@@ -4,7 +4,7 @@ public class Shell
 {
     public const string Author = "That_One_Nerd";
     public const string Name = "SrcMod";
-    public const string Version = "Alpha 0.3.3";
+    public const string Version = "Alpha 0.4.0";
 
     public readonly string? ShellDirectory;
 
@@ -239,24 +239,27 @@ public class Shell
 
                 void runCommand(object? sender, DoWorkEventArgs e)
                 {
-#if RELEASE
                     try
                     {
-#endif
                         command.Invoke(args);
-#if RELEASE
                     }
+#if RELEASE
                     catch (TargetInvocationException ex)
                     {
                         Write($"[ERROR] {ex.InnerException!.Message}", ConsoleColor.Red);
                         if (LoadingBar.Enabled) LoadingBar.End();
                     }
+#endif
                     catch (Exception ex)
                     {
+#if RELEASE
                         Write($"[ERROR] {ex.Message}", ConsoleColor.Red);
                         if (LoadingBar.Enabled) LoadingBar.End();
-                    }
+#else
+                        Write($"[ERROR] {ex}", ConsoleColor.Red);
+                        if (LoadingBar.Enabled) LoadingBar.End();
 #endif
+                    }
                 }
 
                 activeCommand = new();
