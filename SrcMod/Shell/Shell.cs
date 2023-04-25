@@ -4,7 +4,7 @@ public class Shell
 {
     public const string Author = "That_One_Nerd";
     public const string Name = "SrcMod";
-    public const string Version = "Alpha 0.3.3";
+    public const string Version = "Alpha 0.4.0";
 
     public readonly string? ShellDirectory;
 
