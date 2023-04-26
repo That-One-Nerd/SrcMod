@@ -8,4 +8,5 @@ SrcMod/Compiled
 SrcMod/Shell/obj/
 
 # Personal Stuff
+SrcMod/Shell/Modules/TestingModule.cs
 TODO.md
