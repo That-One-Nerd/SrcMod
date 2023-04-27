@@ -1,6 +1,6 @@
 ﻿namespace SrcMod.Shell.Valve;
 
-public class VdfTreeNode : VdfNode
+public class VdfTreeNode : VdfNode, IEnumerable<KeyValuePair<string, VdfNode>>
 {
     public int SubNodeCount => p_subNodes.Count;
 
@@ -29,4 +29,7 @@ public class VdfTreeNode : VdfNode
             p_subNodes[p_subNodes.Keys.ElementAt(index)] = value;
         }
     }
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    public IEnumerator<KeyValuePair<string, VdfNode>> GetEnumerator() => p_subNodes.GetEnumerator();
 }

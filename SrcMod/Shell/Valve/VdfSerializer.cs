@@ -14,8 +14,10 @@ public class VdfSerializer
 
     public void Serialize(Stream stream, VdfNode parentNode, string parentNodeName)
     {
-        StreamWriter writer = p_options.closeWhenFinished ? new(stream) : new(stream, leaveOpen: true);
-        VdfConvert.SerializeNode(writer, parentNode, parentNodeName, ref p_options, 0);
+        StreamWriter writer = new(stream, leaveOpen: !p_options.closeWhenFinished);
+        VdfConvert.SerializeNode(writer, parentNode, parentNodeName, p_options, 0);
         writer.Close();
+
+        if (!p_options.closeWhenFinished && p_options.resetStreamPosition) stream.Seek(0, SeekOrigin.Begin);
     }
 }
