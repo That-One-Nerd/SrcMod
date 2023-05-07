@@ -1,28 +1,36 @@
 ﻿namespace SrcMod.Shell.Valve;
 
-public class VdfTreeNode : VdfNode, IEnumerable<KeyValuePair<string, VdfNode>>
+public class VdfTreeNode : VdfNode, IEnumerable<KeyValuePair<string, VdfNode?>>
 {
     public int SubNodeCount => p_subNodes.Count;
 
-    private Dictionary<string, VdfNode> p_subNodes;
+    private readonly Dictionary<string, VdfNode?> p_subNodes;
 
-    public VdfTreeNode(Dictionary<string, VdfNode>? subNodes = null) : base()
+    public VdfTreeNode(Dictionary<string, VdfNode?>? subNodes = null) : base()
     {
         p_subNodes = subNodes ?? new();
     }
 
-    public VdfNode this[string key]
+    public VdfNode? this[string key]
     {
-        get => p_subNodes[key];
+        get
+        {
+            if (p_subNodes.TryGetValue(key, out VdfNode? value)) return value;
+            else return null;
+        }
         set
         {
             if (p_subNodes.ContainsKey(key)) p_subNodes[key] = value;
             else p_subNodes.Add(key, value);
         }
     }
-    public VdfNode this[int index]
+    public VdfNode? this[int index]
     {
-        get => p_subNodes.Values.ElementAt(index);
+        get
+        {
+            if (p_subNodes.Count >= index || index < 0) return null;
+            return p_subNodes.Values.ElementAt(index);
+        }
         set
         {
             if (p_subNodes.Count >= index || index < 0) throw new IndexOutOfRangeException();
@@ -31,5 +39,5 @@ public class VdfTreeNode : VdfNode, IEnumerable<KeyValuePair<string, VdfNode>>
     }
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-    public IEnumerator<KeyValuePair<string, VdfNode>> GetEnumerator() => p_subNodes.GetEnumerator();
+    public IEnumerator<KeyValuePair<string, VdfNode?>> GetEnumerator() => p_subNodes.GetEnumerator();
 }

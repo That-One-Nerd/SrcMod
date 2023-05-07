@@ -2,10 +2,10 @@
 
 public class VdfSingleNode : VdfNode
 {
-    public object value;
+    public object? value;
 
     public VdfSingleNode(object? value = null) : base()
     {
-        this.value = value ?? new();
+        this.value = value;
     }
 }

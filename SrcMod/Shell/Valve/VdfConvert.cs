@@ -6,9 +6,9 @@ public static class VdfConvert
 {
     private static readonly Dictionary<string, string> p_escapeCodes = new()
     {
+        { "\\", "\\\\" },
         { "\'", "\\\'" },
         { "\"", "\\\"" },
-        { "\\", "\\\\" },
         { "\0", "\\0" },
         { "\a", "\\a" },
         { "\b", "\\b" },
@@ -19,10 +19,22 @@ public static class VdfConvert
         { "\v", "\\v" }
     };
 
-    public static void SerializeNode(StreamWriter writer, VdfNode node, string name,
+    public static void SerializeNode(StreamWriter writer, VdfNode? node, string name,
+        VdfOptions options) => SerializeNode(writer, node, name, options, 0);
+    public static void SerializeNode(StreamWriter writer, VdfNode? node, string name) =>
+        SerializeNode(writer, node, name, VdfOptions.Default, 0);
+
+    public static VdfNode? ToNodeTree(object? obj) => ToNodeTree(obj, VdfOptions.Default);
+    public static VdfNode? ToNodeTree(object? obj, VdfOptions options)
+    {
+        return null;
+    }
+
+    private static void SerializeNode(StreamWriter writer, VdfNode? node, string name,
         VdfOptions options, int indentLevel)
     {
-        if (node is VdfSingleNode single) SerializeSingleNode(writer, single, name, options, indentLevel);
+        if (node is null) return;
+        else if (node is VdfSingleNode single) SerializeSingleNode(writer, single, name, options, indentLevel);
         else if (node is VdfTreeNode tree) SerializeTreeNode(writer, tree, name, options, indentLevel);
         else throw new("Unknown node type.");
     }
@@ -30,11 +42,14 @@ public static class VdfConvert
     private static void SerializeSingleNode(StreamWriter writer, VdfSingleNode node, string name,
         VdfOptions options, int indentLevel)
     {
+        string? serializedValue = SerializeObject(node.value, options);
+        if (serializedValue is null) return;
+
         writer.Write(new string(' ', indentLevel));
         writer.Write(SerializeString(name, options));
         writer.Write(' ');
 
-        string serializedValue = SerializeString(SerializeObject(node.value, options), options);
+        serializedValue = SerializeString(serializedValue, options);
         writer.WriteLine(serializedValue);
     }
     private static void SerializeTreeNode(StreamWriter writer, VdfTreeNode node, string name,
@@ -44,27 +59,15 @@ public static class VdfConvert
         writer.WriteLine(SerializeString(name, options));
         writer.WriteLine(new string(' ', indentLevel) + '{');
 
-        foreach (KeyValuePair<string, VdfNode> subNode in node)
-        {
-            if (subNode.Value is VdfSingleNode singleSubNode && singleSubNode.value.GetType().IsArray)
-            {
-                Array array = (Array)singleSubNode.value;
-                Dictionary<string, VdfNode> items = new();
-                for (int i = 0; i < array.Length; i++)
-                {
-                    object? item = array.GetValue(i);
-                    if (item is VdfNode subNodeItem) items.Add(i.ToString(), subNodeItem);
-                    else items.Add(i.ToString(), new VdfSingleNode(item));
-                }
-            }
-            else SerializeNode(writer, subNode.Value, subNode.Key, options, indentLevel + options.indentSize);
-        }
+        foreach (KeyValuePair<string, VdfNode?> subNode in node)
+            SerializeNode(writer, subNode.Value, subNode.Key, options, indentLevel + options.indentSize);
 
         writer.WriteLine(new string(' ', indentLevel) + '}');
     }
 
-    private static string SerializeObject(object obj, VdfOptions options)
+    private static string? SerializeObject(object? obj, VdfOptions options)
     {
+        if (obj is null) return null;
         return obj.ToString() ?? string.Empty;
     }
 
