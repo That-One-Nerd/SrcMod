@@ -1,22 +1,20 @@
-﻿using System.Security.Cryptography;
-
-namespace SrcMod.Shell.Valve;
+﻿namespace SrcMod.Shell.Valve;
 
 public static class VdfConvert
 {
     private static readonly Dictionary<string, string> p_escapeCodes = new()
     {
-        { "\\", "\\\\" },
-        { "\'", "\\\'" },
-        { "\"", "\\\"" },
-        { "\0", "\\0" },
-        { "\a", "\\a" },
-        { "\b", "\\b" },
-        { "\f", "\\f" },
-        { "\n", "\\n" },
-        { "\r", "\\r" },
-        { "\t", "\\t" },
-        { "\v", "\\v" }
+        { "\\", @"\\" }, // This must be first.
+        { "\'", @"\'" },
+        { "\"", @"\""" },
+        { "\0", @"\0" },
+        { "\a", @"\a" },
+        { "\b", @"\b" },
+        { "\f", @"\f" },
+        { "\n", @"\n" },
+        { "\r", @"\r" },
+        { "\t", @"\t" },
+        { "\v", @"\v" }
     };
 
     public static void SerializeNode(StreamWriter writer, VdfNode? node, string name,
@@ -27,7 +25,40 @@ public static class VdfConvert
     public static VdfNode? ToNodeTree(object? obj) => ToNodeTree(obj, VdfOptions.Default);
     public static VdfNode? ToNodeTree(object? obj, VdfOptions options)
     {
-        return null;
+        if (obj is null) return null;
+        Type type = obj.GetType();
+
+        if (type.IsPrimitive) return new VdfSingleNode(obj);
+        else if (type.IsPointer) throw new("Cannot serialize a pointer.");
+
+        VdfTreeNode tree = new();
+
+        if (obj is IDictionary dictionary)
+        {
+            object[] keys = new object[dictionary.Count],
+                     values = new object[dictionary.Count];
+            dictionary.Keys.CopyTo(keys, 0);
+            dictionary.Values.CopyTo(values, 0);
+            for (int i = 0; i < dictionary.Count; i++)
+            {
+                tree[SerializeObject(keys.GetValue(i), options)!] = ToNodeTree(values.GetValue(i));
+            }
+            return tree;
+        }
+        else if (obj is IEnumerable enumerable)
+        {
+            int index = 0;
+            foreach (object item in enumerable)
+            {
+                tree[SerializeObject(index, options)!] = ToNodeTree(item);
+                index++;
+            }
+            return tree;
+        }
+
+        // TODO: serialize object
+
+        return tree;
     }
 
     private static void SerializeNode(StreamWriter writer, VdfNode? node, string name,
@@ -55,6 +86,8 @@ public static class VdfConvert
     private static void SerializeTreeNode(StreamWriter writer, VdfTreeNode node, string name,
         VdfOptions options, int indentLevel)
     {
+        if (node.SubNodeCount <= 0) return;
+
         writer.Write(new string(' ', indentLevel));
         writer.WriteLine(SerializeString(name, options));
         writer.WriteLine(new string(' ', indentLevel) + '{');
