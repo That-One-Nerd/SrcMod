@@ -34,6 +34,7 @@ public static class VdfConvert
         VdfTreeNode tree = new();
 
         if (obj is IVdfSerializable vdf) return vdf.ToNodeTree();
+        else if (obj is string str) return new VdfSingleNode(str);
         else if (obj is IDictionary dictionary)
         {
             object[] keys = new object[dictionary.Count],
@@ -42,7 +43,7 @@ public static class VdfConvert
             dictionary.Values.CopyTo(values, 0);
             for (int i = 0; i < dictionary.Count; i++)
             {
-                tree[SerializeObject(keys.GetValue(i), options)!] = ToNodeTree(values.GetValue(i));
+                tree[SerializeObject(keys.GetValue(i), options)!] = ToNodeTree(values.GetValue(i), options);
             }
             return tree;
         }
@@ -51,7 +52,7 @@ public static class VdfConvert
             int index = 0;
             foreach (object item in enumerable)
             {
-                tree[SerializeObject(index, options)!] = ToNodeTree(item);
+                tree[SerializeObject(index, options)!] = ToNodeTree(item, options);
                 index++;
             }
             return tree;
@@ -67,17 +68,28 @@ public static class VdfConvert
                                              where isPublic && !isStatic && !isIgnored && !isConst
                                              select field;
 
-        IEnumerable<PropertyInfo> validProperties = from prop in type.GetProperties()
-                                                    let canGet = prop.GetMethod is not null
-                                                    let isPublic = canGet && prop.GetMethod!.IsPublic
-                                                    let isStatic = canGet && prop.GetMethod!.IsStatic
-                                                    let isIgnored = prop.CustomAttributes.Any(x =>
-                                                        x.AttributeType == typeof(VdfIgnoreAttribute))
-                                                    where canGet && isPublic && !isStatic && !isIgnored
-                                                    select prop;
+        IEnumerable<PropertyInfo> validProperties;
+        if (options.serializeProperties)
+        {
+            validProperties = from prop in type.GetProperties()
+                              let canGet = prop.GetMethod is not null
+                              let isPublic = canGet && prop.GetMethod!.IsPublic
+                              let isStatic = canGet && prop.GetMethod!.IsStatic
+                              let isIgnored = prop.CustomAttributes.Any(x =>
+                                  x.AttributeType == typeof(VdfIgnoreAttribute))
+                              where canGet && isPublic && !isStatic && !isIgnored
+                              select prop;
+        }
+        else validProperties = Array.Empty<PropertyInfo>();
 
-        foreach (FieldInfo field in validFields) Write($"field: {field.Name}");
-        foreach (PropertyInfo prop in validProperties) Write($"prop: {prop.Name}");
+        foreach (FieldInfo field in validFields)
+        {
+            tree[field.Name] = ToNodeTree(field.GetValue(obj), options);
+        }
+        foreach (PropertyInfo prop in validProperties)
+        {
+            tree[prop.Name] = ToNodeTree(prop.GetValue(obj), options);
+        }
 
         return tree;
     }

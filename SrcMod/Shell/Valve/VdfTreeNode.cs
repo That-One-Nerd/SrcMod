@@ -38,6 +38,8 @@ public class VdfTreeNode : VdfNode, IEnumerable<KeyValuePair<string, VdfNode?>>
         }
     }
 
+    public void Add(string key, VdfNode? value) => this[key] = value;
+
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     public IEnumerator<KeyValuePair<string, VdfNode?>> GetEnumerator() => p_subNodes.GetEnumerator();
 }
