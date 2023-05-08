@@ -33,7 +33,8 @@ public static class VdfConvert
 
         VdfTreeNode tree = new();
 
-        if (obj is IDictionary dictionary)
+        if (obj is IVdfSerializable vdf) return vdf.ToNodeTree();
+        else if (obj is IDictionary dictionary)
         {
             object[] keys = new object[dictionary.Count],
                      values = new object[dictionary.Count];
@@ -45,7 +46,7 @@ public static class VdfConvert
             }
             return tree;
         }
-        else if (obj is IEnumerable enumerable)
+        else if (obj is ICollection enumerable)
         {
             int index = 0;
             foreach (object item in enumerable)
@@ -57,6 +58,26 @@ public static class VdfConvert
         }
 
         // TODO: serialize object
+        IEnumerable<FieldInfo> validFields = from field in type.GetFields()
+                                             let isPublic = field.IsPublic
+                                             let isStatic = field.IsStatic
+                                             let isIgnored = field.CustomAttributes.Any(x =>
+                                                 x.AttributeType == typeof(VdfIgnoreAttribute))
+                                             let isConst = field.IsLiteral
+                                             where isPublic && !isStatic && !isIgnored && !isConst
+                                             select field;
+
+        IEnumerable<PropertyInfo> validProperties = from prop in type.GetProperties()
+                                                    let canGet = prop.GetMethod is not null
+                                                    let isPublic = canGet && prop.GetMethod!.IsPublic
+                                                    let isStatic = canGet && prop.GetMethod!.IsStatic
+                                                    let isIgnored = prop.CustomAttributes.Any(x =>
+                                                        x.AttributeType == typeof(VdfIgnoreAttribute))
+                                                    where canGet && isPublic && !isStatic && !isIgnored
+                                                    select prop;
+
+        foreach (FieldInfo field in validFields) Write($"field: {field.Name}");
+        foreach (PropertyInfo prop in validProperties) Write($"prop: {prop.Name}");
 
         return tree;
     }
