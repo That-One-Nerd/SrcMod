@@ -1,8 +1,8 @@
-﻿namespace SrcMod.Shell.Valve;
+﻿namespace SrcMod.Shell.Valve.Vkv;
 
-public record class VdfOptions
+public record class VkvOptions
 {
-    public static VdfOptions Default => new();
+    public static VkvOptions Default => new();
 
     public bool closeWhenFinished;
     public int indentSize;
@@ -11,7 +11,7 @@ public record class VdfOptions
     public bool useEscapeCodes;
     public bool useQuotes;
 
-    public VdfOptions()
+    public VkvOptions()
     {
         closeWhenFinished = true;
         indentSize = 4;

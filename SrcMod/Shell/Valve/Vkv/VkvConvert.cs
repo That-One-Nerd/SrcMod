@@ -1,8 +1,8 @@
-﻿using SrcMod.Shell.Valve.ObjectModels;
+﻿using SrcMod.Shell.Valve.Vkv.ObjectModels;
 
-namespace SrcMod.Shell.Valve;
+namespace SrcMod.Shell.Valve.Vkv;
 
-public static class VdfConvert
+public static class VkvConvert
 {
     private static readonly Dictionary<string, string> p_escapeCodes = new()
     {
@@ -20,12 +20,12 @@ public static class VdfConvert
     };
 
     #region DeserializeNode
-    public static VdfNode? DeserializeNode(StreamReader reader) =>
-        DeserializeNode(reader, VdfOptions.Default, out _, null);
-    public static VdfNode? DeserializeNode(StreamReader reader, VdfOptions options) =>
+    public static VkvNode? DeserializeNode(StreamReader reader) =>
+        DeserializeNode(reader, VkvOptions.Default, out _, null);
+    public static VkvNode? DeserializeNode(StreamReader reader, VkvOptions options) =>
         DeserializeNode(reader, options, out _, null);
 
-    private static VdfNode? DeserializeNode(StreamReader reader, VdfOptions options, out string name,
+    private static VkvNode? DeserializeNode(StreamReader reader, VkvOptions options, out string name,
         string? first)
     {
         string? header = first ?? (reader.ReadLine()?.Trim());
@@ -36,31 +36,31 @@ public static class VdfConvert
         }
 
         string[] parts = SplitContent(header, options);
-        if (parts.Length > 2) throw new VdfSerializationException("Too many values in node.");
+        if (parts.Length > 2) throw new VkvSerializationException("Too many values in node.");
 
-        VdfNode node;
+        VkvNode node;
 
         name = DeserializeString(parts[0], options);
         if (parts.Length == 2)
         {
             object value = DeserializeObject(DeserializeString(parts[1], options));
-            node = new VdfSingleNode(value);
+            node = new VkvSingleNode(value);
         }
         else
         {
             string? next = reader.ReadLine()?.Trim();
-            if (next is null) throw new VdfSerializationException("Expected starting '{', found end-of-file.");
-            else if (next != "{") throw new VdfSerializationException($"Expected starting '{{', found \"{next}\".");
-            VdfTreeNode tree = new();
+            if (next is null) throw new VkvSerializationException("Expected starting '{', found end-of-file.");
+            else if (next != "{") throw new VkvSerializationException($"Expected starting '{{', found \"{next}\".");
+            VkvTreeNode tree = new();
             string? current;
             while ((current = reader.ReadLine()?.Trim()) is not null)
             {
                 if (current == "}") break;
-                VdfNode? output = DeserializeNode(reader, options, out string subName, current);
-                if (output is null) throw new VdfSerializationException("Error deserializing sub-node.");
+                VkvNode? output = DeserializeNode(reader, options, out string subName, current);
+                if (output is null) throw new VkvSerializationException("Error deserializing sub-node.");
                 tree[subName] = output;
             }
-            if (current is null) throw new VdfSerializationException("Reached end-of-file while deserializing group.");
+            if (current is null) throw new VkvSerializationException("Reached end-of-file while deserializing group.");
             node = tree;
         }
 
@@ -69,12 +69,12 @@ public static class VdfConvert
 
     private static object DeserializeObject(string content) =>
         TypeParsers.ParseAll(content);
-    private static string DeserializeString(string content, VdfOptions options)
+    private static string DeserializeString(string content, VkvOptions options)
     {
         if (options.useQuotes)
         {
             if (!content.StartsWith('\"') || !content.EndsWith('\"'))
-                throw new VdfSerializationException("No quotes found around content.");
+                throw new VkvSerializationException("No quotes found around content.");
             content = content[1..^1];
         }
         if (options.useEscapeCodes)
@@ -85,7 +85,7 @@ public static class VdfConvert
         return content;
     }
 
-    private static string[] SplitContent(string content, VdfOptions options)
+    private static string[] SplitContent(string content, VkvOptions options)
     {
         content = content.Replace('\t', ' ');
         if (options.useQuotes)
@@ -105,7 +105,7 @@ public static class VdfConvert
                 }
                 else current += c;
             }
-            if (inQuote) throw new VdfSerializationException("Reached end-of-line while inside quotations.");
+            if (inQuote) throw new VkvSerializationException("Reached end-of-line while inside quotations.");
             if (!string.IsNullOrEmpty(current)) values.Add(current);
             return values.ToArray();
         }
@@ -114,7 +114,7 @@ public static class VdfConvert
     #endregion
 
     #region FromNodeTree
-    public static object? FromNodeTree(Type outputType, VdfNode? node, VdfOptions options)
+    public static object? FromNodeTree(Type outputType, VkvNode? node, VkvOptions options)
     {
         if (node is null) return null;
 
@@ -125,7 +125,7 @@ public static class VdfConvert
                                              let isPublic = field.IsPublic
                                              let isStatic = field.IsStatic
                                              let isIgnored = field.CustomAttributes.Any(x =>
-                                                 x.AttributeType == typeof(VdfIgnoreAttribute))
+                                                 x.AttributeType == typeof(VkvIgnoreAttribute))
                                              let isConst = field.IsLiteral
                                              where isPublic && !isStatic && !isIgnored && !isConst
                                              select field;
@@ -138,7 +138,7 @@ public static class VdfConvert
                               let isPublic = canSet && prop.SetMethod!.IsPublic
                               let isStatic = canSet && prop.SetMethod!.IsStatic
                               let isIgnored = prop.CustomAttributes.Any(x =>
-                                  x.AttributeType == typeof(VdfIgnoreAttribute))
+                                  x.AttributeType == typeof(VkvIgnoreAttribute))
                               where canSet && isPublic && !isStatic && !isIgnored
                               select prop;
         }
@@ -151,7 +151,7 @@ public static class VdfConvert
             Type castType = field.FieldType;
             if (TypeParsers.CanParse(instance))
             {
-                
+
             }
         }
         foreach (PropertyInfo prop in validProperties)
@@ -170,22 +170,22 @@ public static class VdfConvert
     #endregion
 
     #region SerializeNode
-    public static void SerializeNode(StreamWriter writer, VdfNode? node, string name,
-        VdfOptions options) => SerializeNode(writer, node, name, options, 0);
-    public static void SerializeNode(StreamWriter writer, VdfNode? node, string name) =>
-        SerializeNode(writer, node, name, VdfOptions.Default, 0);
+    public static void SerializeNode(StreamWriter writer, VkvNode? node, string name,
+        VkvOptions options) => SerializeNode(writer, node, name, options, 0);
+    public static void SerializeNode(StreamWriter writer, VkvNode? node, string name) =>
+        SerializeNode(writer, node, name, VkvOptions.Default, 0);
 
-    private static void SerializeNode(StreamWriter writer, VdfNode? node, string name,
-        VdfOptions options, int indentLevel)
+    private static void SerializeNode(StreamWriter writer, VkvNode? node, string name,
+        VkvOptions options, int indentLevel)
     {
         if (node is null) return;
-        else if (node is VdfSingleNode single) SerializeSingleNode(writer, single, name, options, indentLevel);
-        else if (node is VdfTreeNode tree) SerializeTreeNode(writer, tree, name, options, indentLevel);
+        else if (node is VkvSingleNode single) SerializeSingleNode(writer, single, name, options, indentLevel);
+        else if (node is VkvTreeNode tree) SerializeTreeNode(writer, tree, name, options, indentLevel);
         else throw new("Unknown node type.");
     }
 
-    private static void SerializeSingleNode(StreamWriter writer, VdfSingleNode node, string name,
-        VdfOptions options, int indentLevel)
+    private static void SerializeSingleNode(StreamWriter writer, VkvSingleNode node, string name,
+        VkvOptions options, int indentLevel)
     {
         string? serializedValue = SerializeObject(node.value);
         if (serializedValue is null) return;
@@ -197,8 +197,8 @@ public static class VdfConvert
         serializedValue = SerializeString(serializedValue, options);
         writer.WriteLine(serializedValue);
     }
-    private static void SerializeTreeNode(StreamWriter writer, VdfTreeNode node, string name,
-        VdfOptions options, int indentLevel)
+    private static void SerializeTreeNode(StreamWriter writer, VkvTreeNode node, string name,
+        VkvOptions options, int indentLevel)
     {
         if (node.SubNodeCount <= 0) return;
 
@@ -206,7 +206,7 @@ public static class VdfConvert
         writer.WriteLine(SerializeString(name, options));
         writer.WriteLine(new string(' ', indentLevel) + '{');
 
-        foreach (KeyValuePair<string, VdfNode?> subNode in node)
+        foreach (KeyValuePair<string, VkvNode?> subNode in node)
             SerializeNode(writer, subNode.Value, subNode.Key, options, indentLevel + options.indentSize);
 
         writer.WriteLine(new string(' ', indentLevel) + '}');
@@ -218,7 +218,7 @@ public static class VdfConvert
         return obj.ToString() ?? string.Empty;
     }
 
-    private static string SerializeString(string content, VdfOptions options)
+    private static string SerializeString(string content, VkvOptions options)
     {
         if (options.useEscapeCodes)
         {
@@ -232,18 +232,18 @@ public static class VdfConvert
     #endregion
 
     #region ToNodeTree
-    public static VdfNode? ToNodeTree(object? obj) => ToNodeTree(obj, VdfOptions.Default);
-    public static VdfNode? ToNodeTree(object? obj, VdfOptions options)
+    public static VkvNode? ToNodeTree(object? obj) => ToNodeTree(obj, VkvOptions.Default);
+    public static VkvNode? ToNodeTree(object? obj, VkvOptions options)
     {
         if (obj is null) return null;
         Type type = obj.GetType();
 
-        if (type.IsPrimitive || TypeParsers.CanParse(obj)) return new VdfSingleNode(obj);
+        if (type.IsPrimitive || TypeParsers.CanParse(obj)) return new VkvSingleNode(obj);
         else if (type.IsPointer) throw new("Cannot serialize a pointer.");
 
-        VdfTreeNode tree = new();
+        VkvTreeNode tree = new();
 
-        if (obj is IVdfConvertible vdf) return vdf.ToNodeTree();
+        if (obj is IVkvConvertible vdf) return vdf.ToNodeTree();
         else if (obj is IDictionary dictionary)
         {
             object[] keys = new object[dictionary.Count],
@@ -271,7 +271,7 @@ public static class VdfConvert
                                              let isPublic = field.IsPublic
                                              let isStatic = field.IsStatic
                                              let isIgnored = field.CustomAttributes.Any(x =>
-                                                 x.AttributeType == typeof(VdfIgnoreAttribute))
+                                                 x.AttributeType == typeof(VkvIgnoreAttribute))
                                              let isConst = field.IsLiteral
                                              where isPublic && !isStatic && !isIgnored && !isConst
                                              select field;
@@ -284,7 +284,7 @@ public static class VdfConvert
                               let isPublic = canGet && prop.GetMethod!.IsPublic
                               let isStatic = canGet && prop.GetMethod!.IsStatic
                               let isIgnored = prop.CustomAttributes.Any(x =>
-                                  x.AttributeType == typeof(VdfIgnoreAttribute))
+                                  x.AttributeType == typeof(VkvIgnoreAttribute))
                               where canGet && isPublic && !isStatic && !isIgnored
                               select prop;
         }

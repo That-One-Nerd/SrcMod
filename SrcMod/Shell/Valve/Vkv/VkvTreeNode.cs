@@ -1,21 +1,21 @@
-﻿namespace SrcMod.Shell.Valve;
+﻿namespace SrcMod.Shell.Valve.Vkv;
 
-public class VdfTreeNode : VdfNode, IEnumerable<KeyValuePair<string, VdfNode?>>
+public class VkvTreeNode : VkvNode, IEnumerable<KeyValuePair<string, VkvNode?>>
 {
     public int SubNodeCount => p_subNodes.Count;
 
-    private readonly Dictionary<string, VdfNode?> p_subNodes;
+    private readonly Dictionary<string, VkvNode?> p_subNodes;
 
-    public VdfTreeNode(Dictionary<string, VdfNode?>? subNodes = null) : base()
+    public VkvTreeNode(Dictionary<string, VkvNode?>? subNodes = null) : base()
     {
         p_subNodes = subNodes ?? new();
     }
 
-    public VdfNode? this[string key]
+    public VkvNode? this[string key]
     {
         get
         {
-            if (p_subNodes.TryGetValue(key, out VdfNode? value)) return value;
+            if (p_subNodes.TryGetValue(key, out VkvNode? value)) return value;
             else return null;
         }
         set
@@ -24,7 +24,7 @@ public class VdfTreeNode : VdfNode, IEnumerable<KeyValuePair<string, VdfNode?>>
             else p_subNodes.Add(key, value);
         }
     }
-    public VdfNode? this[int index]
+    public VkvNode? this[int index]
     {
         get
         {
@@ -38,8 +38,8 @@ public class VdfTreeNode : VdfNode, IEnumerable<KeyValuePair<string, VdfNode?>>
         }
     }
 
-    public void Add(string key, VdfNode? value) => this[key] = value;
+    public void Add(string key, VkvNode? value) => this[key] = value;
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-    public IEnumerator<KeyValuePair<string, VdfNode?>> GetEnumerator() => p_subNodes.GetEnumerator();
+    public IEnumerator<KeyValuePair<string, VkvNode?>> GetEnumerator() => p_subNodes.GetEnumerator();
 }
