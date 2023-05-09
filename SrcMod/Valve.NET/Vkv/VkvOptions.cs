@@ -1,4 +1,4 @@
-﻿namespace SrcMod.Shell.Valve.Vkv;
+﻿namespace Valve.Vkv;
 
 public record class VkvOptions
 {

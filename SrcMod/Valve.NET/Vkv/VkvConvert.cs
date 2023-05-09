@@ -1,6 +1,6 @@
-﻿using SrcMod.Shell.Valve.Vkv.ObjectModels;
+﻿using Valve.Vkv.ObjectModels;
 
-namespace SrcMod.Shell.Valve.Vkv;
+namespace Valve.Vkv;
 
 public static class VkvConvert
 {

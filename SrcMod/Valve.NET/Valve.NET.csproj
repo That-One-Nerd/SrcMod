@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net7.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+	<AssemblyName>valve.net</AssemblyName>
+	<RootNamespace>Valve</RootNamespace>
+	<OutputPath>../Compiled/Valve.NET</OutputPath>
+	<Title>Valve.NET</Title>
+	<Authors>That_One_Nerd</Authors>
+	<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+	<NoWin32Manifest>true</NoWin32Manifest>
+  </PropertyGroup>
+
+</Project>

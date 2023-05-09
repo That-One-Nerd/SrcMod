@@ -1,7 +1,6 @@
 # Visual Studio stuff
 .vs/
 SrcMod/.vs/
-*.sln
 
 # Compiled Files
 SrcMod/Compiled

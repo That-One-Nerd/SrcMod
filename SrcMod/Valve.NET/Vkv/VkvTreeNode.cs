@@ -1,4 +1,4 @@
-﻿namespace SrcMod.Shell.Valve.Vkv;
+﻿namespace Valve.Vkv;
 
 public class VkvTreeNode : VkvNode, IEnumerable<KeyValuePair<string, VkvNode?>>
 {

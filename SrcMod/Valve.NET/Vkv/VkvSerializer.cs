@@ -1,4 +1,4 @@
-﻿namespace SrcMod.Shell.Valve.Vkv;
+﻿namespace Valve.Vkv;
 
 public class VkvSerializer
 {

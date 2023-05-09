@@ -1,4 +1,4 @@
-﻿namespace SrcMod.Shell.Valve.Vkv.ObjectModels;
+﻿namespace Valve.Vkv.ObjectModels;
 
 public class VkvSerializationException : Exception
 {

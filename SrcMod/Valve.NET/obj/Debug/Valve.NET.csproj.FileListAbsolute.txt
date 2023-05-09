@@ -1,0 +1,12 @@
+C:\Users\kyley\Desktop\GitHub\SrcMod\SrcMod\Valve.NET\obj\Debug\Valve.NET.csproj.AssemblyReference.cache
+C:\Users\kyley\Desktop\GitHub\SrcMod\SrcMod\Valve.NET\obj\Debug\Valve.NET.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\kyley\Desktop\GitHub\SrcMod\SrcMod\Valve.NET\obj\Debug\Valve.NET.AssemblyInfoInputs.cache
+C:\Users\kyley\Desktop\GitHub\SrcMod\SrcMod\Valve.NET\obj\Debug\Valve.NET.AssemblyInfo.cs
+C:\Users\kyley\Desktop\GitHub\SrcMod\SrcMod\Valve.NET\obj\Debug\Valve.NET.csproj.CoreCompileInputs.cache
+C:\Users\kyley\Desktop\GitHub\SrcMod\SrcMod\Compiled\Valve.NET\valve.net.deps.json
+C:\Users\kyley\Desktop\GitHub\SrcMod\SrcMod\Compiled\Valve.NET\valve.net.dll
+C:\Users\kyley\Desktop\GitHub\SrcMod\SrcMod\Compiled\Valve.NET\valve.net.pdb
+C:\Users\kyley\Desktop\GitHub\SrcMod\SrcMod\Valve.NET\obj\Debug\valve.net.dll
+C:\Users\kyley\Desktop\GitHub\SrcMod\SrcMod\Valve.NET\obj\Debug\refint\valve.net.dll
+C:\Users\kyley\Desktop\GitHub\SrcMod\SrcMod\Valve.NET\obj\Debug\valve.net.pdb
+C:\Users\kyley\Desktop\GitHub\SrcMod\SrcMod\Valve.NET\obj\Debug\ref\valve.net.dll
