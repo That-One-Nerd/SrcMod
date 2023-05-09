@@ -18,6 +18,8 @@ public static class VdfConvert
     };
 
     #region DeserializeNode
+    public static VdfNode? DeserializeNode(StreamReader reader) =>
+        DeserializeNode(reader, VdfOptions.Default, out _, null);
     public static VdfNode? DeserializeNode(StreamReader reader, VdfOptions options) =>
         DeserializeNode(reader, options, out _, null);
 
@@ -109,6 +111,62 @@ public static class VdfConvert
     }
     #endregion
 
+    #region FromNodeTree
+    public static object? FromNodeTree(Type outputType, VdfNode? node, VdfOptions options)
+    {
+        if (node is null) return null;
+
+        object? instance = Activator.CreateInstance(outputType);
+        if (instance is null) return null;
+
+        IEnumerable<FieldInfo> validFields = from field in outputType.GetFields()
+                                             let isPublic = field.IsPublic
+                                             let isStatic = field.IsStatic
+                                             let isIgnored = field.CustomAttributes.Any(x =>
+                                                 x.AttributeType == typeof(VdfIgnoreAttribute))
+                                             let isConst = field.IsLiteral
+                                             where isPublic && !isStatic && !isIgnored && !isConst
+                                             select field;
+
+        IEnumerable<PropertyInfo> validProperties;
+        if (options.serializeProperties)
+        {
+            validProperties = from prop in outputType.GetProperties()
+                              let canSet = prop.SetMethod is not null
+                              let isPublic = canSet && prop.SetMethod!.IsPublic
+                              let isStatic = canSet && prop.SetMethod!.IsStatic
+                              let isIgnored = prop.CustomAttributes.Any(x =>
+                                  x.AttributeType == typeof(VdfIgnoreAttribute))
+                              where canSet && isPublic && !isStatic && !isIgnored
+                              select prop;
+        }
+        else validProperties = Array.Empty<PropertyInfo>();
+
+        foreach (FieldInfo field in validFields)
+        {
+            // TODO: check if the node tree has that field.
+
+            Type castType = field.FieldType;
+            if (TypeParsers.CanParse(instance))
+            {
+                
+            }
+        }
+        foreach (PropertyInfo prop in validProperties)
+        {
+            // TODO: check if the node tree has that field.
+
+            Type castType = prop.PropertyType;
+            if (TypeParsers.CanParse(instance))
+            {
+
+            }
+        }
+
+        return null;
+    }
+    #endregion
+
     #region SerializeNode
     public static void SerializeNode(StreamWriter writer, VdfNode? node, string name,
         VdfOptions options) => SerializeNode(writer, node, name, options, 0);
@@ -178,13 +236,12 @@ public static class VdfConvert
         if (obj is null) return null;
         Type type = obj.GetType();
 
-        if (type.IsPrimitive) return new VdfSingleNode(obj);
+        if (type.IsPrimitive || TypeParsers.CanParse(obj)) return new VdfSingleNode(obj);
         else if (type.IsPointer) throw new("Cannot serialize a pointer.");
 
         VdfTreeNode tree = new();
 
-        if (obj is IVdfSerializable vdf) return vdf.ToNodeTree();
-        else if (obj is string str) return new VdfSingleNode(str);
+        if (obj is IVdfConvertible vdf) return vdf.ToNodeTree();
         else if (obj is IDictionary dictionary)
         {
             object[] keys = new object[dictionary.Count],
@@ -208,7 +265,6 @@ public static class VdfConvert
             return tree;
         }
 
-        // TODO: serialize object
         IEnumerable<FieldInfo> validFields = from field in type.GetFields()
                                              let isPublic = field.IsPublic
                                              let isStatic = field.IsStatic

@@ -2,6 +2,9 @@
 
 public static class TypeParsers
 {
+    public static bool CanParse(object? obj) => obj is not null && obj is sbyte or byte or short or ushort or int
+        or uint or long or ulong or Int128 or UInt128 or nint or nuint or Half or float or double or decimal
+        or char or DateOnly or DateTime or DateTimeOffset or Guid or TimeOnly or TimeSpan;
     public static object ParseAll(string msg)
     {
         if (TryParse(msg, out sbyte int8)) return int8;
