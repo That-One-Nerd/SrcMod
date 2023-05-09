@@ -4,7 +4,7 @@ public class VdfSerializer
 {
     public VdfOptions Options => p_options;
 
-    private VdfOptions p_options;
+    private readonly VdfOptions p_options;
 
     public VdfSerializer() : this(VdfOptions.Default) { }
     public VdfSerializer(VdfOptions options)

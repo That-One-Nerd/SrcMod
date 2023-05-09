@@ -1,4 +1,4 @@
-﻿namespace SrcMod.Shell.Valve;
+﻿namespace SrcMod.Shell.Valve.ObjectModels;
 
 public class VdfSerializationException : Exception
 {

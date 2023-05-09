@@ -1,4 +1,6 @@
-﻿namespace SrcMod.Shell.Valve;
+﻿using SrcMod.Shell.Valve.ObjectModels;
+
+namespace SrcMod.Shell.Valve;
 
 public static class VdfConvert
 {
