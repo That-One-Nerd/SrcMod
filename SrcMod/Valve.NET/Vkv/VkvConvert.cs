@@ -1,4 +1,5 @@
-﻿using Valve.Vkv.ObjectModels;
+﻿using System;
+using Valve.Vkv.ObjectModels;
 
 using ValveParsers = Valve.Miscellaneous.TypeParsers;
 
@@ -45,7 +46,7 @@ public static class VkvConvert
         name = DeserializeString(parts[0], options);
         if (parts.Length == 2)
         {
-            object value = DeserializeObject(DeserializeString(parts[1], options));
+            string value = DeserializeString(parts[1], options);
             node = new VkvSingleNode(value);
         }
         else
@@ -69,8 +70,6 @@ public static class VkvConvert
         return node;
     }
 
-    private static object DeserializeObject(string content) =>
-        ValveParsers.ParseAll(content);
     private static string DeserializeString(string content, VkvOptions options)
     {
         if (options.useQuotes)
@@ -120,75 +119,121 @@ public static class VkvConvert
     {
         if (node is null) return null;
 
-        if (node is VkvSingleNode single)
-        {
-            object? value = single.value;
-            if (value is null) return null;
-            else if (value is string str)
-            {
-                value = ValveParsers.ParseAll(str);
-                if (value is string still && outputType.IsEnum)
-                {
-                    if (Enum.TryParse(outputType, still, true, out object? res) && res is not null)
-                        value = res;
-                }
-            }
-            return Convert.ChangeType(value, outputType);
-        }
-        else if (node is VkvTreeNode tree)
-        {
-            object? instance = Activator.CreateInstance(outputType);
-            if (instance is null) return null;
-
-            IEnumerable<FieldInfo> validFields = from field in outputType.GetFields()
-                                                 let isPublic = field.IsPublic
-                                                 let isStatic = field.IsStatic
-                                                 let isIgnored = field.CustomAttributes.Any(x =>
-                                                     x.AttributeType == typeof(VkvIgnoreAttribute))
-                                                 let isConst = field.IsLiteral
-                                                 where isPublic && !isStatic && !isIgnored && !isConst
-                                                 select field;
-
-            IEnumerable<PropertyInfo> validProperties;
-            if (options.serializeProperties)
-            {
-                validProperties = from prop in outputType.GetProperties()
-                                  let canSet = prop.SetMethod is not null
-                                  let isPublic = canSet && prop.SetMethod!.IsPublic
-                                  let isStatic = canSet && prop.SetMethod!.IsStatic
-                                  let isIgnored = prop.CustomAttributes.Any(x =>
-                                      x.AttributeType == typeof(VkvIgnoreAttribute))
-                                  where canSet && isPublic && !isStatic && !isIgnored
-                                  select prop;
-            }
-            else validProperties = Array.Empty<PropertyInfo>();
-
-            foreach (FieldInfo field in validFields)
-            {
-                string name = field.Name;
-
-                VkvNode? subNode = tree[name];
-                if (subNode is null) continue;
-
-                object? result = FromNodeTree(field.FieldType, subNode, options);
-                if (result is null) continue;
-                field.SetValue(instance, result);
-            }
-            foreach (PropertyInfo prop in validProperties)
-            {
-                string name = prop.Name;
-
-                VkvNode? subNode = tree[name];
-                if (subNode is null) continue;
-
-                object? result = FromNodeTree(prop.PropertyType, subNode, options);
-                if (result is null) continue;
-                prop.SetValue(instance, result);
-            }
-
-            return instance;
-        }
+        if (node is VkvSingleNode single) return FromSingleNode(outputType, single);
+        else if (node is VkvTreeNode tree) return FromTreeNode(outputType, tree, options);
         else throw new VkvSerializationException("Unknown VKV node type.");
+    }
+
+    private static object? FromSingleNode(Type outputType, VkvSingleNode node)
+    {
+        object? value = node.value;
+        if (value is null) return null;
+        else if (value is string str)
+        {
+            value = ValveParsers.ParseAll(str);
+            if (value is string still && outputType.IsEnum)
+            {
+                if (Enum.TryParse(outputType, still, true, out object? res) && res is not null)
+                    value = res;
+            }
+        }
+        return Convert.ChangeType(value, outputType);
+    }
+    
+    private static object? FromTreeNode(Type outputType, VkvTreeNode node, VkvOptions options)
+    {
+        if (outputType.IsArray)
+            return FromTreeNodeArray(outputType, node, options);
+
+        else if (outputType.GetInterface("IList") is not null)
+            return FromTreeNodeList(outputType, node, options);
+
+        object? instance = Activator.CreateInstance(outputType);
+        if (instance is null) return null;
+
+        IEnumerable<FieldInfo> validFields = from field in outputType.GetFields()
+                                             let isPublic = field.IsPublic
+                                             let isStatic = field.IsStatic
+                                             let isIgnored = field.CustomAttributes.Any(x =>
+                                                 x.AttributeType == typeof(VkvIgnoreAttribute))
+                                             let isConst = field.IsLiteral
+                                             where isPublic && !isStatic && !isIgnored && !isConst
+                                             select field;
+
+        IEnumerable<PropertyInfo> validProperties;
+        if (options.serializeProperties)
+        {
+            validProperties = from prop in outputType.GetProperties()
+                              let canSet = prop.SetMethod is not null
+                              let isPublic = canSet && prop.SetMethod!.IsPublic
+                              let isStatic = canSet && prop.SetMethod!.IsStatic
+                              let isIgnored = prop.CustomAttributes.Any(x =>
+                                  x.AttributeType == typeof(VkvIgnoreAttribute))
+                              where canSet && isPublic && !isStatic && !isIgnored
+                              select prop;
+        }
+        else validProperties = Array.Empty<PropertyInfo>();
+
+        foreach (FieldInfo field in validFields)
+        {
+            string name = field.Name;
+
+            VkvNode? subNode = node[name];
+            if (subNode is null) continue;
+
+            object? result = FromNodeTree(field.FieldType, subNode, options);
+            if (result is null) continue;
+            field.SetValue(instance, result);
+        }
+        foreach (PropertyInfo prop in validProperties)
+        {
+            string name = prop.Name;
+
+            VkvNode? subNode = node[name];
+            if (subNode is null) continue;
+
+            object? result = FromNodeTree(prop.PropertyType, subNode, options);
+            if (result is null) continue;
+            prop.SetValue(instance, result);
+        }
+
+        return instance;
+    }
+
+    private static object? FromTreeNodeArray(Type outputType, VkvTreeNode node, VkvOptions options)
+    {
+        Type elementType = outputType.GetElementType()!;
+        Array array = Array.CreateInstance(elementType, node.SubNodeCount);
+
+        int index = 0;
+        foreach (KeyValuePair<string, VkvNode?> subNode in node)
+        {
+            string indexStr = index.ToString();
+            if (subNode.Key != indexStr) throw new VkvSerializationException($"Cannot convert node tree to array.");
+            array.SetValue(FromNodeTree(elementType, subNode.Value, options), index);
+            index++;
+        }
+        return array;
+    }
+
+    private static object? FromTreeNodeList(Type outputType, VkvTreeNode node, VkvOptions options)
+    {
+        IList? instance = (IList?)Activator.CreateInstance(outputType);
+        if (instance is null) return null;
+
+        // There is no guarentee that the first type argument corresponds to the element type,
+        // but as far as I know there isn't a better way.
+        Type elementType = outputType.IsGenericType ? outputType.GetGenericArguments().First() : typeof(object);
+
+        int index = 0;
+        foreach (KeyValuePair<string, VkvNode?> subNode in node)
+        {
+            string indexStr = index.ToString();
+            if (subNode.Key != indexStr) throw new VkvSerializationException($"Cannot convert node tree to array.");
+            instance.Add(FromNodeTree(elementType, subNode.Value, options));
+            index++;
+        }
+        return instance;
     }
     #endregion
 
