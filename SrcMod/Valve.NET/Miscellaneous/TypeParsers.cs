@@ -1,10 +1,17 @@
 ﻿namespace Valve.Miscellaneous;
 
-internal static class TypeParsers
+public static class TypeParsers
 {
     public static bool CanParse(object? obj) => obj is not null && obj is sbyte or byte or short or ushort or int
         or uint or long or ulong or Int128 or UInt128 or nint or nuint or Half or float or double or decimal
         or char or DateOnly or DateTime or DateTimeOffset or Guid or TimeOnly or TimeSpan;
+    public static bool CanParse(Type type) => type == typeof(sbyte) || type == typeof(byte) || type == typeof(short)
+        || type == typeof(ushort) || type == typeof(int) || type == typeof(uint) || type == typeof(long)
+        || type == typeof(ulong) || type == typeof(Int128) || type == typeof(UInt128) || type == typeof(nint)
+        || type == typeof(nuint) || type == typeof(Half) || type == typeof(float) || type == typeof(double)
+        || type == typeof(decimal) || type == typeof(char) || type == typeof(DateOnly) || type == typeof(DateTime)
+        || type == typeof(DateTimeOffset) || type == typeof(Guid) || type == typeof(TimeOnly)
+        || type == typeof(TimeSpan);
     public static object ParseAll(string msg)
     {
         if (TryParse(msg, out sbyte int8)) return int8;

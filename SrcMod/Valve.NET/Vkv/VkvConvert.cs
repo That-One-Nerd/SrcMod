@@ -1,5 +1,7 @@
 ﻿using Valve.Vkv.ObjectModels;
 
+using ValveParsers = Valve.Miscellaneous.TypeParsers;
+
 namespace Valve.Vkv;
 
 public static class VkvConvert
@@ -68,7 +70,7 @@ public static class VkvConvert
     }
 
     private static object DeserializeObject(string content) =>
-        TypeParsers.ParseAll(content);
+        ValveParsers.ParseAll(content);
     private static string DeserializeString(string content, VkvOptions options)
     {
         if (options.useQuotes)
@@ -118,54 +120,67 @@ public static class VkvConvert
     {
         if (node is null) return null;
 
-        object? instance = Activator.CreateInstance(outputType);
-        if (instance is null) return null;
-
-        IEnumerable<FieldInfo> validFields = from field in outputType.GetFields()
-                                             let isPublic = field.IsPublic
-                                             let isStatic = field.IsStatic
-                                             let isIgnored = field.CustomAttributes.Any(x =>
-                                                 x.AttributeType == typeof(VkvIgnoreAttribute))
-                                             let isConst = field.IsLiteral
-                                             where isPublic && !isStatic && !isIgnored && !isConst
-                                             select field;
-
-        IEnumerable<PropertyInfo> validProperties;
-        if (options.serializeProperties)
+        if (node is VkvSingleNode single)
         {
-            validProperties = from prop in outputType.GetProperties()
-                              let canSet = prop.SetMethod is not null
-                              let isPublic = canSet && prop.SetMethod!.IsPublic
-                              let isStatic = canSet && prop.SetMethod!.IsStatic
-                              let isIgnored = prop.CustomAttributes.Any(x =>
-                                  x.AttributeType == typeof(VkvIgnoreAttribute))
-                              where canSet && isPublic && !isStatic && !isIgnored
-                              select prop;
-        }
-        else validProperties = Array.Empty<PropertyInfo>();
-
-        foreach (FieldInfo field in validFields)
-        {
-            // TODO: check if the node tree has that field.
-
-            Type castType = field.FieldType;
-            if (TypeParsers.CanParse(instance))
+            object? value = single.value;
+            if (value is null) return null;
+            else if (value is string str)
             {
-
+                value = ValveParsers.ParseAll(str);
+                if (value is string still && outputType.IsEnum)
+                {
+                    if (Enum.TryParse(outputType, still, true, out object? res) && res is not null)
+                        value = res;
+                }
             }
+            return Convert.ChangeType(value, outputType);
         }
-        foreach (PropertyInfo prop in validProperties)
+        else if (node is VkvTreeNode tree)
         {
-            // TODO: check if the node tree has that field.
+            object? instance = Activator.CreateInstance(outputType);
+            if (instance is null) return null;
 
-            Type castType = prop.PropertyType;
-            if (TypeParsers.CanParse(instance))
+            IEnumerable<FieldInfo> validFields = from field in outputType.GetFields()
+                                                 let isPublic = field.IsPublic
+                                                 let isStatic = field.IsStatic
+                                                 let isIgnored = field.CustomAttributes.Any(x =>
+                                                     x.AttributeType == typeof(VkvIgnoreAttribute))
+                                                 let isConst = field.IsLiteral
+                                                 where isPublic && !isStatic && !isIgnored && !isConst
+                                                 select field;
+
+            IEnumerable<PropertyInfo> validProperties;
+            if (options.serializeProperties)
             {
-
+                validProperties = from prop in outputType.GetProperties()
+                                  let canSet = prop.SetMethod is not null
+                                  let isPublic = canSet && prop.SetMethod!.IsPublic
+                                  let isStatic = canSet && prop.SetMethod!.IsStatic
+                                  let isIgnored = prop.CustomAttributes.Any(x =>
+                                      x.AttributeType == typeof(VkvIgnoreAttribute))
+                                  where canSet && isPublic && !isStatic && !isIgnored
+                                  select prop;
             }
-        }
+            else validProperties = Array.Empty<PropertyInfo>();
 
-        return null;
+            foreach (FieldInfo field in validFields)
+            {
+                // TODO: check if the node tree has that field.
+
+                // TODO:
+                // parsables
+                // enums
+                // casting
+                // sub-conversion
+            }
+            foreach (PropertyInfo prop in validProperties)
+            {
+                // TODO: check if the node tree has that field.
+            }
+
+            return null;
+        }
+        else throw new VkvSerializationException("Unknown VKV node type.");
     }
     #endregion
 
@@ -238,12 +253,12 @@ public static class VkvConvert
         if (obj is null) return null;
         Type type = obj.GetType();
 
-        if (type.IsPrimitive || TypeParsers.CanParse(obj)) return new VkvSingleNode(obj);
+        if (type.IsPrimitive || ValveParsers.CanParse(obj)) return new VkvSingleNode(obj);
         else if (type.IsPointer) throw new("Cannot serialize a pointer.");
 
         VkvTreeNode tree = new();
 
-        if (obj is IVkvConvertible vdf) return vdf.ToNodeTree();
+        if (obj is IVkvConvertible vkv) return vkv.ToNodeTree();
         else if (obj is IDictionary dictionary)
         {
             object[] keys = new object[dictionary.Count],
