@@ -6,6 +6,8 @@ SrcMod/.vs/
 SrcMod/Compiled
 SrcMod/Shell/obj/
 
+SrcMod/Valve.NET/obj
+
 # Personal Stuff
 SrcMod/Shell/Modules/TestingModule.cs
 TODO.md
