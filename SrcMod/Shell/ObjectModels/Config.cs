@@ -65,7 +65,28 @@ public class Config
 
     internal Config()
     {
-        GameDirectories = Array.Empty<string>();
+        // TODO: This won't work if the steam installation is somewhere else.
+        const string gameDirDataPath = @"C:\Program Files (x86)\Steam\steamapps\libraryfolders.vdf";
+
+        VkvSerializer serializer = new(new()
+        {
+            useEscapeCodes = true,
+            useQuotes = true
+        });
+        FileStream gameDirData = new(gameDirDataPath, FileMode.Open);
+
+        LibraryFolder[]? folders = serializer.Deserialize<LibraryFolder[]>(gameDirData);
+        if (folders is null)
+        {
+            Write("[WARNING] Error parsing steam game directories.");
+            GameDirectories = Array.Empty<string>();
+        }
+        else
+        {
+            GameDirectories = new string[folders.Length];
+            for (int i = 0; i < folders.Length; i++) GameDirectories[i] = folders[i].path;
+        }
+
         RunUnsafeCommands = AskMode.Ask;
     }
 
