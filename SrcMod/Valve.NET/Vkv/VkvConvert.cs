@@ -165,20 +165,28 @@ public static class VkvConvert
 
             foreach (FieldInfo field in validFields)
             {
-                // TODO: check if the node tree has that field.
+                string name = field.Name;
 
-                // TODO:
-                // parsables
-                // enums
-                // casting
-                // sub-conversion
+                VkvNode? subNode = tree[name];
+                if (subNode is null) continue;
+
+                object? result = FromNodeTree(field.FieldType, subNode, options);
+                if (result is null) continue;
+                field.SetValue(instance, result);
             }
             foreach (PropertyInfo prop in validProperties)
             {
-                // TODO: check if the node tree has that field.
+                string name = prop.Name;
+
+                VkvNode? subNode = tree[name];
+                if (subNode is null) continue;
+
+                object? result = FromNodeTree(prop.PropertyType, subNode, options);
+                if (result is null) continue;
+                prop.SetValue(instance, result);
             }
 
-            return null;
+            return instance;
         }
         else throw new VkvSerializationException("Unknown VKV node type.");
     }
