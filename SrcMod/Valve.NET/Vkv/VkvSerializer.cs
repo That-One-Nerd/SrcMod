@@ -22,6 +22,16 @@ public class VkvSerializer
         if (!p_options.closeWhenFinished && p_options.resetStreamPosition) stream.Seek(pos, SeekOrigin.Begin);
         return result;
     }
+    public T? Deserialize<T>(Stream stream)
+    {
+        VkvNode? result = Deserialize(stream);
+        return VkvConvert.FromNodeTree<T>(result, p_options);
+    }
+    public object? Deserialize(Type outputType, Stream stream)
+    {
+        VkvNode? result = Deserialize(stream);
+        return VkvConvert.FromNodeTree(outputType, result, p_options);
+    }
 
     public void Serialize(Stream stream, object? value, string parentNodeName)
     {

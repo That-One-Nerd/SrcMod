@@ -1,7 +1,4 @@
-﻿using System;
-using Valve.Vkv.ObjectModels;
-
-using ValveParsers = Valve.Miscellaneous.TypeParsers;
+﻿using Valve.Vkv.ObjectModels;
 
 namespace Valve.Vkv;
 
@@ -115,6 +112,7 @@ public static class VkvConvert
     #endregion
 
     #region FromNodeTree
+    public static T? FromNodeTree<T>(VkvNode? node, VkvOptions options) => (T?)FromNodeTree(typeof(T), node, options);
     public static object? FromNodeTree(Type outputType, VkvNode? node, VkvOptions options)
     {
         if (node is null) return null;
@@ -130,7 +128,7 @@ public static class VkvConvert
         if (value is null) return null;
         else if (value is string str)
         {
-            value = ValveParsers.ParseAll(str);
+            value = TypeParsers.ParseAll(str);
             if (value is string still && outputType.IsEnum)
             {
                 if (Enum.TryParse(outputType, still, true, out object? res) && res is not null)
@@ -147,6 +145,9 @@ public static class VkvConvert
 
         else if (outputType.GetInterface("IList") is not null)
             return FromTreeNodeList(outputType, node, options);
+
+        else if (outputType.GetInterface("IDictionary") is not null)
+            return FromTreeNodeDictionary(outputType, node, options);
 
         object? instance = Activator.CreateInstance(outputType);
         if (instance is null) return null;
@@ -223,7 +224,7 @@ public static class VkvConvert
 
         // There is no guarentee that the first type argument corresponds to the element type,
         // but as far as I know there isn't a better way.
-        Type elementType = outputType.IsGenericType ? outputType.GetGenericArguments().First() : typeof(object);
+        Type elementType = outputType.IsGenericType ? outputType.GenericTypeArguments[0] : typeof(object);
 
         int index = 0;
         foreach (KeyValuePair<string, VkvNode?> subNode in node)
@@ -232,6 +233,34 @@ public static class VkvConvert
             if (subNode.Key != indexStr) throw new VkvSerializationException($"Cannot convert node tree to array.");
             instance.Add(FromNodeTree(elementType, subNode.Value, options));
             index++;
+        }
+        return instance;
+    }
+
+    private static object? FromTreeNodeDictionary(Type outputType, VkvTreeNode node, VkvOptions options)
+    {
+        IDictionary? instance = (IDictionary?)Activator.CreateInstance(outputType);
+        if (instance is null) return null;
+
+        // There is no guarentee that the first and second type arguments represent the
+        // key and value types, but as far as I know there isn't a better way.
+        bool canUseGenerics = outputType.GenericTypeArguments.Length >= 2;
+        Type keyType = canUseGenerics ? outputType.GenericTypeArguments[0] : typeof(object),
+             valueType = canUseGenerics ? outputType.GenericTypeArguments[1] : typeof(object);
+
+        foreach (KeyValuePair<string, VkvNode?> subNode in node)
+        {
+            object key = TypeParsers.ParseAll(subNode.Key);
+            if (key is string still && keyType.IsEnum)
+            {
+                if (Enum.TryParse(keyType, still, true, out object? res) && res is not null)
+                    key = res;
+            }
+            key = Convert.ChangeType(key, keyType);
+
+            object? value = FromNodeTree(valueType, subNode.Value, options);
+
+            instance.Add(key, value);
         }
         return instance;
     }
@@ -306,7 +335,7 @@ public static class VkvConvert
         if (obj is null) return null;
         Type type = obj.GetType();
 
-        if (type.IsPrimitive || ValveParsers.CanParse(obj)) return new VkvSingleNode(obj);
+        if (type.IsPrimitive || TypeParsers.CanParse(obj)) return new VkvSingleNode(obj);
         else if (type.IsPointer) throw new("Cannot serialize a pointer.");
 
         VkvTreeNode tree = new();
