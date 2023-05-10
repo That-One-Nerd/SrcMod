@@ -8,6 +8,7 @@ public record class VkvOptions
     public int indentSize;
     public bool resetStreamPosition;
     public bool serializeProperties;
+    public SpacingMode spacing;
     public bool useEscapeCodes;
     public bool useQuotes;
 
@@ -17,6 +18,7 @@ public record class VkvOptions
         indentSize = 4;
         resetStreamPosition = false;
         serializeProperties = true;
+        spacing = SpacingMode.DoubleTab;
         useEscapeCodes = false;
         useQuotes = false;
     }

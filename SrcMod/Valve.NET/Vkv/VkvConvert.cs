@@ -289,7 +289,20 @@ public static class VkvConvert
 
         writer.Write(new string(' ', indentLevel));
         writer.Write(SerializeString(name, options));
-        writer.Write(' ');
+
+        switch (options.spacing)
+        {
+            case SpacingMode.SingleSpace: writer.Write(' ');
+                break;
+
+            case SpacingMode.IndentSizeSpacing: writer.Write(new string(' ', options.indentSize));
+                break;
+
+            case SpacingMode.DoubleTab: writer.Write("\t\t");
+                break;
+
+            default: throw new VkvSerializationException($"Unknown spacing mode \"{options.spacing}\".");
+        }
 
         serializedValue = SerializeString(serializedValue, options);
         writer.WriteLine(serializedValue);
@@ -325,7 +338,6 @@ public static class VkvConvert
         if (options.useQuotes) content = $"\"{content}\"";
         return content;
     }
-
     #endregion
 
     #region ToNodeTree

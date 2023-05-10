@@ -14,3 +14,4 @@ global using System.Threading;
 global using Valve;
 global using Valve.Miscellaneous;
 global using Valve.Vkv;
+global using Valve.Vkv.ObjectModels;
