@@ -3,7 +3,7 @@
 public class LibraryFolder
 {
     public string path;
-    public Dictionary<int, int> apps;
+    public Dictionary<int, ulong> apps;
 
     public LibraryFolder()
     {
