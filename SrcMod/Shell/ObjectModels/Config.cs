@@ -22,6 +22,7 @@ public class Config
     private static Config p_applied;
     private static Changes? p_changes;
 
+    // These variables should only exist in the Config class so they aren't marked as shared.
     private static string p_steamLocation;
 
     static Config()
@@ -85,6 +86,8 @@ public class Config
             return;
         }
         p_steamLocation = (string)key.GetValue("SteamPath")!;
+
+        // Assign config variables.
 
         string gameDirDataPath = Path.Combine(p_steamLocation, @"steamapps\libraryfolders.vdf");
 
