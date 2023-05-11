@@ -23,7 +23,7 @@ public class Config
     private static Changes? p_changes;
 
     // These variables should only exist in the Config class so they aren't marked as shared.
-    private static string p_steamLocation;
+    private string p_steamLocation;
 
     static Config()
     {
@@ -82,6 +82,7 @@ public class Config
             // This should never run, and is just here to supress
             // a couple compiler warnings.
             p_steamLocation = string.Empty;
+            GameDirectories = Array.Empty<string>();
             RunUnsafeCommands = AskMode.Ask;
             return;
         }
