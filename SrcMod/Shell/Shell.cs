@@ -139,9 +139,18 @@ public class Shell
 
     public string ReadLine()
     {
-        Write($"\n{WorkingDirectory}", ConsoleColor.DarkGreen, false);
-        if (ActiveGame is not null) Write($" {ActiveGame}", ConsoleColor.DarkYellow, false);
-        if (ActiveMod is not null) Write($" {ActiveMod}", ConsoleColor.Magenta, false);
+        Write("\n", newLine: false);
+        if (ActiveMod is not null) Write($"{ActiveMod} ", ConsoleColor.Magenta, false);
+        
+        if (ActiveMod is not null)
+        {
+            string directory = Path.GetRelativePath(ActiveMod.RootDirectory, WorkingDirectory);
+            if (directory == ".") directory = string.Empty;
+            Write($"~\\{directory}", ConsoleColor.DarkGreen, false);
+        }
+        else Write($"{WorkingDirectory}", ConsoleColor.DarkGreen, false);
+
+        if (ActiveGame is not null) Write($" ({ActiveGame})", ConsoleColor.DarkYellow, false);
         Write(null);
 
         Write($" {Name}", ConsoleColor.DarkCyan, false);
