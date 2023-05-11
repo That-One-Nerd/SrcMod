@@ -13,15 +13,28 @@ public class Mod
 
     public static Mod? ReadDirectory(string dir)
     {
-        if (!File.Exists(dir + "\\GameInfo.txt")) return null;
+        dir = dir.Trim().Replace('/', '\\');
+        string check = dir;
 
-        Mod mod = new()
+        while (!string.IsNullOrEmpty(check))
         {
-            Name = dir.Split("\\").Last(),
-            RootDirectory = dir
-        };
+            if (File.Exists(Path.Combine(check, "GameInfo.txt")))
+            {
+                // Root mod directory found, go from here.
+                // TODO: Parse VKV out of GameInfo.txt
 
-        return mod;
+                Mod mod = new()
+                {
+                    Name = Path.GetFileNameWithoutExtension(check), // TODO: replace with GameInfo: Title
+                    RootDirectory = check
+                };
+                return mod;
+            }
+
+            check = Path.GetDirectoryName(check) ?? string.Empty; // Go to parent folder.
+        }
+
+        return null;
     }
 
     public override string ToString() => Name;
