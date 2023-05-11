@@ -22,8 +22,11 @@ public class Config
     private static Config p_applied;
     private static Changes? p_changes;
 
+    private static string p_steamLocation;
+
     static Config()
     {
+        // Generate shared fields between the config class and its changes equivalent.
         p_applied = Defaults;
 
         FieldInfo[] configFields = (from field in typeof(Config).GetFields()
@@ -65,8 +68,25 @@ public class Config
 
     internal Config()
     {
-        // TODO: This won't work if the steam installation is somewhere else.
-        const string gameDirDataPath = @"C:\Program Files (x86)\Steam\steamapps\libraryfolders.vdf";
+        // Locate some steam stuff.
+        const string steamLocationKey = @"Software\Valve\Steam";
+        RegistryKey? key = Registry.CurrentUser.OpenSubKey(steamLocationKey);
+        if (key is null)
+        {
+            Write("[FATAL] Cannot locate Steam installation. Do you have Steam installed?",
+                ConsoleColor.DarkRed);
+            Thread.Sleep(1000);
+            BaseModule.QuitShell(-1);
+
+            // This should never run, and is just here to supress
+            // a couple compiler warnings.
+            p_steamLocation = string.Empty;
+            RunUnsafeCommands = AskMode.Ask;
+            return;
+        }
+        p_steamLocation = (string)key.GetValue("SteamPath")!;
+
+        string gameDirDataPath = Path.Combine(p_steamLocation, @"steamapps\libraryfolders.vdf");
 
         VkvSerializer serializer = new(new()
         {
@@ -78,7 +98,7 @@ public class Config
         LibraryFolder[]? folders = serializer.Deserialize<LibraryFolder[]>(gameDirData);
         if (folders is null)
         {
-            Write("[WARNING] Error parsing steam game directories.");
+            Write("[WARNING] Error parsing Steam game directories.", ConsoleColor.DarkYellow);
             GameDirectories = Array.Empty<string>();
         }
         else

@@ -16,10 +16,10 @@ public class Shell
     public List<HistoryItem> History;
     public string WorkingDirectory;
 
-    private bool lastCancel;
-    private bool printedCancel;
+    private bool p_lastCancel;
+    private bool p_printedCancel;
 
-    private BackgroundWorker? activeCommand;
+    private BackgroundWorker? p_activeCommand;
 
     public Shell()
     {
@@ -88,8 +88,8 @@ public class Shell
         Write(" by ", ConsoleColor.White, false);
         Write($"{Author}", ConsoleColor.DarkYellow);
 
-        lastCancel = false;
-        activeCommand = null;
+        p_lastCancel = false;
+        p_activeCommand = null;
         Console.CancelKeyPress += HandleCancel;
 
         ActiveGame = null;
@@ -149,7 +149,7 @@ public class Shell
 
         bool printed = false;
 
-        if (lastCancel && !printedCancel)
+        if (p_lastCancel && !p_printedCancel)
         {
             // Print the warning. A little bit of mess because execution must
             // continue without funny printing errors but it's alright I guess.
@@ -160,7 +160,7 @@ public class Shell
             Write("Press ^C again to exit the shell.", ConsoleColor.Red);
             PlayWarningSound();
 
-            printedCancel = true;
+            p_printedCancel = true;
             Console.CursorTop += 2;
 
             Console.CursorLeft = originalLeft;
@@ -175,8 +175,8 @@ public class Shell
 
         if (!printed)
         {
-            lastCancel = false;
-            printedCancel = false;
+            p_lastCancel = false;
+            p_printedCancel = false;
         }
 
         return message;
@@ -262,18 +262,18 @@ public class Shell
                     }
                 }
 
-                activeCommand = new();
-                activeCommand.DoWork += runCommand;
-                activeCommand.RunWorkerAsync();
+                p_activeCommand = new();
+                p_activeCommand.DoWork += runCommand;
+                p_activeCommand.RunWorkerAsync();
 
-                activeCommand.WorkerSupportsCancellation = command.CanBeCancelled;
+                p_activeCommand.WorkerSupportsCancellation = command.CanBeCancelled;
 
-                while (activeCommand is not null && activeCommand.IsBusy) Thread.Yield();
+                while (p_activeCommand is not null && p_activeCommand.IsBusy) Thread.Yield();
 
-                if (activeCommand is not null)
+                if (p_activeCommand is not null)
                 {
-                    activeCommand.Dispose();
-                    activeCommand = null;
+                    p_activeCommand.Dispose();
+                    p_activeCommand = null;
                 }
 
                 if (ShellDirectory is null) Write("[WARNING] Could not save config to shell location. Any changes will be ignored.");
@@ -310,14 +310,14 @@ public class Shell
 
     private void HandleCancel(object? sender, ConsoleCancelEventArgs args)
     {
-        if (activeCommand is not null && activeCommand.IsBusy)
+        if (p_activeCommand is not null && p_activeCommand.IsBusy)
         {
-            if (activeCommand.WorkerSupportsCancellation)
+            if (p_activeCommand.WorkerSupportsCancellation)
             {
                 // Kill the active command.
-                activeCommand.CancelAsync();
-                activeCommand.Dispose();
-                activeCommand = null;
+                p_activeCommand.CancelAsync();
+                p_activeCommand.Dispose();
+                p_activeCommand = null;
             }
             else
             {
@@ -326,18 +326,18 @@ public class Shell
                 PlayErrorSound();
             }
 
-            lastCancel = false;
-            printedCancel = false;
+            p_lastCancel = false;
+            p_printedCancel = false;
             args.Cancel = true;
             return;
         }
 
         // Due to some funny multithreading issues, we want to make the warning label
         // single-threaded on the shell.
-        if (!lastCancel)
+        if (!p_lastCancel)
         {
             // Enable the warning. The "ReadLine" method will do the rest.
-            lastCancel = true;
+            p_lastCancel = true;
             args.Cancel = true; // "Cancel" referring to the cancellation of the cancel operation.
             return;
         }

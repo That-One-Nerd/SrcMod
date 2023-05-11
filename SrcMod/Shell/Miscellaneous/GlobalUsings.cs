@@ -1,10 +1,12 @@
-﻿global using Nerd_STF.Mathematics;
+﻿global using Microsoft.Win32;
+global using Nerd_STF.Mathematics;
 global using Newtonsoft.Json;
 global using SharpCompress.Archives.Rar;
 global using SharpCompress.Archives.SevenZip;
 global using SharpCompress.Readers;
 global using SrcMod.Shell.Extensions;
 global using SrcMod.Shell.Interop;
+global using SrcMod.Shell.Modules;
 global using SrcMod.Shell.Modules.ObjectModels;
 global using SrcMod.Shell.ObjectModels;
 global using SrcMod.Shell.ObjectModels.Steam;
