@@ -4,6 +4,9 @@ public class Config
 {
     public const string FilePath = "config.json";
 
+    public static bool HasDisplayableError => false;
+    public static bool HasDisplayableWarning => p_printedLastSteamWarning;
+
     public static Config Defaults => new();
 
     private static readonly FieldInfo[] p_configSharedFields;
@@ -21,6 +24,8 @@ public class Config
 
     private static Config p_applied;
     private static Changes? p_changes;
+
+    private static bool p_printedLastSteamWarning;
 
     // These variables should only exist in the Config class so they aren't marked as shared.
     private readonly string p_steamLocation;
@@ -93,16 +98,35 @@ public class Config
         string gameDirDataPath = Path.Combine(p_steamLocation, @"steamapps\libraryfolders.vdf");
 
         FileStream gameDirData = new(gameDirDataPath, FileMode.Open);
-        LibraryFolder[]? folders = SerializeVkv.Deserialize<LibraryFolder[]>(gameDirData);
-        if (folders is null)
+        try
         {
-            Write("[WARNING] Error parsing Steam game directories.", ConsoleColor.DarkYellow);
-            GameDirectories = Array.Empty<string>();
+            LibraryFolder[]? folders = SerializeVkv.Deserialize<LibraryFolder[]>(gameDirData);
+            if (folders is null)
+            {
+                if (!p_printedLastSteamWarning)
+                    Write("[WARNING] Error parsing Steam game directories.", ConsoleColor.DarkYellow);
+                GameDirectories = Array.Empty<string>();
+                p_printedLastSteamWarning = true;
+            }
+            else
+            {
+                GameDirectories = new string[folders.Length];
+                for (int i = 0; i < folders.Length; i++) GameDirectories[i] = folders[i].path;
+                p_printedLastSteamWarning = false;
+            }
         }
-        else
+        catch (Exception ex)
         {
-            GameDirectories = new string[folders.Length];
-            for (int i = 0; i < folders.Length; i++) GameDirectories[i] = folders[i].path;
+            if (!p_printedLastSteamWarning)
+            {
+#if RELEASE
+                Write("[WARNING] Error parsing Steam game directories.", ConsoleColor.DarkYellow);
+#else
+                Write(ex, ConsoleColor.DarkYellow);
+#endif
+            }
+            GameDirectories = Array.Empty<string>();
+            p_printedLastSteamWarning = true;
         }
 
         RunUnsafeCommands = AskMode.Ask;

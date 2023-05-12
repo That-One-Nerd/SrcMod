@@ -1,4 +1,6 @@
-﻿namespace Valve.Vkv;
+﻿using System.Reflection.PortableExecutable;
+
+namespace Valve.Vkv;
 
 public class VkvSerializer
 {
@@ -16,11 +18,18 @@ public class VkvSerializer
     {
         long pos = stream.Position;
         StreamReader reader = new(stream, leaveOpen: !p_options.closeWhenFinished);
-        VkvNode? result = VkvConvert.DeserializeNode(reader, p_options);
-        reader.Close();
-
-        if (!p_options.closeWhenFinished && p_options.resetStreamPosition) stream.Seek(pos, SeekOrigin.Begin);
-        return result;
+        try
+        {
+            VkvNode? result = VkvConvert.DeserializeNode(reader, p_options);
+            reader.Close();
+            if (!p_options.closeWhenFinished && p_options.resetStreamPosition) stream.Seek(pos, SeekOrigin.Begin);
+            return result;
+        }
+        finally
+        {
+            reader.Close();
+            if (!p_options.closeWhenFinished && p_options.resetStreamPosition) stream.Seek(pos, SeekOrigin.Begin);
+        }
     }
     public T? Deserialize<T>(Stream stream)
     {

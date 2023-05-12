@@ -6,6 +6,12 @@ public class Shell
     public const string Name = "SrcMod";
     public const string Version = "Beta 0.5.0";
 
+    public bool HasAnyDisplayableError => HasDisplayableError || Config.HasDisplayableError;
+    public bool HasAnyDisplayableWarning => HasDisplayableWarning || Config.HasDisplayableWarning;
+
+    public bool HasDisplayableError => p_printedLastReloadError;
+    public bool HasDisplayableWarning => false;
+
     public readonly string? ShellDirectory;
 
     public List<CommandInfo> LoadedCommands;
@@ -18,6 +24,8 @@ public class Shell
 
     private bool p_lastCancel;
     private bool p_printedCancel;
+
+    private bool p_printedLastReloadError;
 
     private BackgroundWorker? p_activeCommand;
 
@@ -140,6 +148,9 @@ public class Shell
     public string ReadLine()
     {
         Write("\n", newLine: false);
+        if (HasAnyDisplayableError) Write($"(Error) ", ConsoleColor.DarkRed, false);
+        else if (HasAnyDisplayableWarning) Write($"(Warning) ", ConsoleColor.DarkYellow, false);
+
         if (ActiveMod is not null) Write($"{ActiveMod} ", ConsoleColor.Magenta, false);
         
         if (ActiveMod is not null)
@@ -309,12 +320,32 @@ public class Shell
 
     public void ReloadDirectoryInfo()
     {
-        ActiveMod = Mod.ReadDirectory(WorkingDirectory);
+        try
+        {
+            ActiveMod = Mod.ReadDirectory(WorkingDirectory);
 
-        // Update title.
-        string title = "SrcMod";
-        if (ActiveMod is not null) title += $" - {ActiveMod.Name}";
-        Console.Title = title;
+            // Update title.
+            string title = "SrcMod";
+            if (ActiveMod is not null) title += $" - {ActiveMod.Name}";
+            Console.Title = title;
+
+            p_printedLastReloadError = false;
+        }
+        catch (Exception ex)
+        {
+            if (!p_printedLastReloadError)
+            {
+#if RELEASE
+                Write("[ERROR] Error reloading directory information. Some data may not update.",
+                    ConsoleColor.Red);
+#else
+                Write(ex, ConsoleColor.Red);
+#endif
+            }
+
+            p_printedLastReloadError = true;
+            Console.Title = "SrcMod (Error)";
+        }
     }
 
     private void HandleCancel(object? sender, ConsoleCancelEventArgs args)
