@@ -24,7 +24,7 @@ public class Mod
                 // Root mod directory found, go from here.
 
                 FileStream fs = new(gameInfoPath, FileMode.Open);
-                GameInfo? modInfo = SerializeVkv.Deserialize<GameInfo>(fs); // TODO: constructor should be public i think
+                GameInfo? modInfo = SerializeVkv.Deserialize<GameInfo>(fs);
                 if (modInfo is null) continue;
 
                 Mod mod = new()

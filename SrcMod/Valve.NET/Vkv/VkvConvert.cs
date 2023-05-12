@@ -57,7 +57,6 @@ public static class VkvConvert
             {
                 if (current == "}") break;
                 VkvNode? output = DeserializeNode(reader, options, out string subName, current);
-                if (output is null) throw new VkvSerializationException("Error deserializing sub-node.");
                 tree[subName] = output;
             }
             if (current is null) throw new VkvSerializationException("Reached end-of-file while deserializing group.");

@@ -35,7 +35,7 @@ public class GameInfo
     public bool SupportsXBox360;
     public FileSystemData FileSystem;
 
-    internal GameInfo()
+    public GameInfo()
     {
         Game = string.Empty;
         Title = string.Empty;
@@ -60,7 +60,7 @@ public class GameInfo
         // Can't make the keys here enums because they can be strung together, 
         public Dictionary<string, string> SearchPaths;
 
-        internal FileSystemData()
+        public FileSystemData()
         {
             SearchPaths = new();
         }
