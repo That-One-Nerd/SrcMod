@@ -9,6 +9,7 @@ global using SrcMod.Shell.Interop;
 global using SrcMod.Shell.Modules;
 global using SrcMod.Shell.Modules.ObjectModels;
 global using SrcMod.Shell.ObjectModels;
+global using SrcMod.Shell.ObjectModels.Source;
 global using SrcMod.Shell.ObjectModels.Steam;
 global using System;
 global using System.Collections;

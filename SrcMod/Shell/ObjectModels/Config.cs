@@ -23,7 +23,7 @@ public class Config
     private static Changes? p_changes;
 
     // These variables should only exist in the Config class so they aren't marked as shared.
-    private string p_steamLocation;
+    private readonly string p_steamLocation;
 
     static Config()
     {
@@ -92,14 +92,8 @@ public class Config
 
         string gameDirDataPath = Path.Combine(p_steamLocation, @"steamapps\libraryfolders.vdf");
 
-        VkvSerializer serializer = new(new()
-        {
-            useEscapeCodes = true,
-            useQuotes = true
-        });
         FileStream gameDirData = new(gameDirDataPath, FileMode.Open);
-
-        LibraryFolder[]? folders = serializer.Deserialize<LibraryFolder[]>(gameDirData);
+        LibraryFolder[]? folders = SerializeVkv.Deserialize<LibraryFolder[]>(gameDirData);
         if (folders is null)
         {
             Write("[WARNING] Error parsing Steam game directories.", ConsoleColor.DarkYellow);
@@ -177,7 +171,7 @@ public class Config
         }
         StreamReader reader = new(fullPath);
         JsonTextReader jsonReader = new(reader);
-        p_changes = Serializer.Deserialize<Changes?>(jsonReader);
+        p_changes = Tools.SerializerJson.Deserialize<Changes?>(jsonReader);
         jsonReader.Close();
         reader.Close();
 
@@ -198,7 +192,7 @@ public class Config
         {
             Indentation = 4
         };
-        Serializer.Serialize(jsonWriter, p_changes);
+        Tools.SerializerJson.Serialize(jsonWriter, p_changes);
         jsonWriter.Close();
         writer.Close();
     }

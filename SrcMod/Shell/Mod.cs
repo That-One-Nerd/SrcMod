@@ -18,14 +18,18 @@ public class Mod
 
         while (!string.IsNullOrEmpty(check))
         {
-            if (File.Exists(Path.Combine(check, "GameInfo.txt")))
+            string gameInfoPath = Path.Combine(check, "GameInfo.txt");
+            if (File.Exists(gameInfoPath))
             {
                 // Root mod directory found, go from here.
-                // TODO: Parse VKV out of GameInfo.txt
+
+                FileStream fs = new(gameInfoPath, FileMode.Open);
+                GameInfo? modInfo = SerializeVkv.Deserialize<GameInfo>(fs); // TODO: constructor should be public i think
+                if (modInfo is null) continue;
 
                 Mod mod = new()
                 {
-                    Name = Path.GetFileNameWithoutExtension(check), // TODO: replace with GameInfo: Title
+                    Name = modInfo.Title,
                     RootDirectory = check
                 };
                 return mod;

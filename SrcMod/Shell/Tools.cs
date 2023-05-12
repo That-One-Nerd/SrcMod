@@ -2,14 +2,26 @@
 
 public static class Tools
 {
-    public static JsonSerializer Serializer { get; private set; }
+    public static JsonSerializer SerializerJson { get; private set; }
+    public static VkvSerializer SerializeVkv { get; private set; }
 
     static Tools()
     {
-        Serializer = JsonSerializer.Create(new()
+        SerializerJson = JsonSerializer.Create(new()
         {
             Formatting = Formatting.Indented,
             NullValueHandling = NullValueHandling.Ignore
+        });
+
+        SerializeVkv = new VkvSerializer(new()
+        {
+            closeWhenFinished = true,
+            indentSize = 4,
+            resetStreamPosition = false,
+            serializeProperties = true,
+            spacing = SpacingMode.DoubleTab,
+            useEscapeCodes = true,
+            useQuotes = true
         });
     }
 
