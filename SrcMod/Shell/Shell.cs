@@ -153,7 +153,7 @@ public class Shell
 
         if (ActiveMod is not null) Write($"{ActiveMod} ", ConsoleColor.Magenta, false);
         
-        if (ActiveMod is not null)
+        if (ActiveMod is not null && Config.LoadedConfig.UseLocalModDirectories)
         {
             string directory = Path.GetRelativePath(ActiveMod.RootDirectory, WorkingDirectory);
             if (directory == ".") directory = string.Empty;
