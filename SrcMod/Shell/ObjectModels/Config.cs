@@ -71,6 +71,7 @@ public class Config
 
     public string[] GameDirectories;
     public AskMode RunUnsafeCommands;
+    public bool UseLocalModDirectories;
 
     internal Config()
     {
@@ -130,6 +131,7 @@ public class Config
         }
 
         RunUnsafeCommands = AskMode.Ask;
+        UseLocalModDirectories = true;
     }
 
     public Config ApplyChanges(Changes changes)
@@ -230,6 +232,7 @@ public class Config
     {
         public string[]? GameDirectories;
         public AskMode? RunUnsafeCommands;
+        public bool? UseLocalModDirectories;
 
         public bool Any() => typeof(Changes).GetFields().Any(x => x.GetValue(this) is not null);
     }
