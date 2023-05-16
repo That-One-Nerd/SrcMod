@@ -6,7 +6,7 @@ public class Mod
 
     public string? Developer { get; set; }
     public string? DeveloperUrl { get; set; }
-    public Dictionary<string, string> SearchPaths { get; set; } // TODO: Replace the keys with a flags enum.
+    public Dictionary<SearchPathType, string> SearchPaths { get; set; }
     public string? ManualUrl { get; set; }
 
     public string? FgdDataPath { get; set; }
@@ -68,7 +68,7 @@ public class Mod
                 _ => throw new ArgumentException($"Unknown type \"{info.Type}\"")
             },
             RootDirectory = root,
-            SearchPaths = info.FileSystem.SearchPaths,
+            SearchPaths = new(),
             ShowDifficultyMenu = info.NoDifficulty is null || !info.NoDifficulty.Value,
             ShowModelMenu = info.NoModels is null || !info.NoModels.Value,
             ShowPortalMenu = info.HasPortals is not null && info.HasPortals.Value,
@@ -90,6 +90,24 @@ public class Mod
             curMod.SupportingFlags |= SupportFlags.VirtualReality;
         if (info.SupportsXBox360 is not null && info.SupportsXBox360.Value)
             curMod.SupportingFlags |= SupportFlags.XBox360;
+
+        foreach (KeyValuePair<string, string> pair in info.FileSystem.SearchPaths)
+        {
+            SearchPathType type = SearchPathType.Unknown;
+            string[] parts = pair.Key.Trim().ToLower().Split('+');
+            foreach (string part in parts) type |= part switch
+            {
+                "game" => SearchPathType.Game,
+                "game_write" => SearchPathType.GameWrite,
+                "gamebin" => SearchPathType.GameBinaries,
+                "platform" => SearchPathType.Platform,
+                "mod" => SearchPathType.Mod,
+                "mod_write" => SearchPathType.ModWrite,
+                "default_write_path" => SearchPathType.DefaultWritePath,
+                "vpk" => SearchPathType.Vpk,
+                _ => SearchPathType.Unknown
+            };
+        }
 
         return curMod;
     }
@@ -136,6 +154,20 @@ public class Mod
         DirectX8 = 1,
         VirtualReality = 2,
         XBox360 = 4
+    }
+
+    [Flags]
+    public enum SearchPathType
+    {
+        Unknown = 0,
+        Game = 1,
+        GameWrite = 2,
+        GameBinaries = 4,
+        Platform = 8,
+        Mod = 16,
+        ModWrite = 32,
+        DefaultWritePath = 64,
+        Vpk = 128
     }
 
     public enum PlayerType
