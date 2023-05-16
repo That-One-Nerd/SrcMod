@@ -176,9 +176,9 @@ public static class VkvConvert
 
         foreach (FieldInfo field in validFields)
         {
-            string name = field.Name;
+            VkvKeyNameAttribute? namingAttribute = field.GetCustomAttribute<VkvKeyNameAttribute>();
 
-            VkvNode? subNode = node[name];
+            VkvNode? subNode = node[namingAttribute?.name ?? field.Name];
             if (subNode is null) continue;
 
             object? result = FromNodeTree(field.FieldType, subNode, options);
@@ -187,9 +187,9 @@ public static class VkvConvert
         }
         foreach (PropertyInfo prop in validProperties)
         {
-            string name = prop.Name;
+            VkvKeyNameAttribute? namingAttribute = prop.GetCustomAttribute<VkvKeyNameAttribute>();
 
-            VkvNode? subNode = node[name];
+            VkvNode? subNode = node[namingAttribute?.name ?? prop.Name];
             if (subNode is null) continue;
 
             object? result = FromNodeTree(prop.PropertyType, subNode, options);
@@ -400,11 +400,13 @@ public static class VkvConvert
 
         foreach (FieldInfo field in validFields)
         {
-            tree[field.Name] = ToNodeTree(field.GetValue(obj), options);
+            VkvKeyNameAttribute? namingAttribute = field.GetCustomAttribute<VkvKeyNameAttribute>();
+            tree[namingAttribute?.name ?? field.Name] = ToNodeTree(field.GetValue(obj), options);
         }
         foreach (PropertyInfo prop in validProperties)
         {
-            tree[prop.Name] = ToNodeTree(prop.GetValue(obj), options);
+            VkvKeyNameAttribute? namingAttribute = prop.GetCustomAttribute<VkvKeyNameAttribute>();
+            tree[namingAttribute?.name ?? prop.Name] = ToNodeTree(prop.GetValue(obj), options);
         }
 
         return tree;
