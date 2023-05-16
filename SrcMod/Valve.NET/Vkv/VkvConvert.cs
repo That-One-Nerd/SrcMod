@@ -1,6 +1,4 @@
-﻿using Valve.Vkv.ObjectModels;
-
-namespace Valve.Vkv;
+﻿namespace Valve.Vkv;
 
 public static class VkvConvert
 {
@@ -21,9 +19,19 @@ public static class VkvConvert
 
     #region DeserializeNode
     public static VkvNode? DeserializeNode(StreamReader reader) =>
-        DeserializeNode(reader, VkvOptions.Default, out _, null);
-    public static VkvNode? DeserializeNode(StreamReader reader, VkvOptions options) =>
-        DeserializeNode(reader, options, out _, null);
+        DeserializeNode(reader, VkvOptions.Default);
+    public static VkvNode? DeserializeNode(StreamReader reader, VkvOptions options)
+    {
+        try
+        {
+            return DeserializeNode(reader, options, out _, null);
+        }
+        catch
+        {
+            if (!options.noExceptions) throw;
+            return null;
+        }
+    }
 
     private static VkvNode? DeserializeNode(StreamReader reader, VkvOptions options, out string name,
         string? first)
@@ -114,11 +122,19 @@ public static class VkvConvert
     public static T? FromNodeTree<T>(VkvNode? node, VkvOptions options) => (T?)FromNodeTree(typeof(T), node, options);
     public static object? FromNodeTree(Type outputType, VkvNode? node, VkvOptions options)
     {
-        if (node is null) return null;
+        try
+        {
+            if (node is null) return null;
 
-        if (node is VkvSingleNode single) return FromSingleNode(outputType, single);
-        else if (node is VkvTreeNode tree) return FromTreeNode(outputType, tree, options);
-        else throw new VkvSerializationException("Unknown VKV node type.");
+            if (node is VkvSingleNode single) return FromSingleNode(outputType, single);
+            else if (node is VkvTreeNode tree) return FromTreeNode(outputType, tree, options);
+            else throw new VkvSerializationException("Unknown VKV node type.");
+        }
+        catch
+        {
+            if (!options.noExceptions) throw;
+            return null;
+        }
     }
 
     private static object? FromSingleNode(Type outputType, VkvSingleNode node)
@@ -267,9 +283,19 @@ public static class VkvConvert
 
     #region SerializeNode
     public static void SerializeNode(StreamWriter writer, VkvNode? node, string name,
-        VkvOptions options) => SerializeNode(writer, node, name, options, 0);
+        VkvOptions options)
+    {
+        try
+        {
+            SerializeNode(writer, node, name, options, 0);
+        }
+        catch
+        {
+            if (!options.noExceptions) throw;
+        }
+    }
     public static void SerializeNode(StreamWriter writer, VkvNode? node, string name) =>
-        SerializeNode(writer, node, name, VkvOptions.Default, 0);
+        SerializeNode(writer, node, name, VkvOptions.Default);
 
     private static void SerializeNode(StreamWriter writer, VkvNode? node, string name,
         VkvOptions options, int indentLevel)
@@ -343,73 +369,81 @@ public static class VkvConvert
     public static VkvNode? ToNodeTree(object? obj) => ToNodeTree(obj, VkvOptions.Default);
     public static VkvNode? ToNodeTree(object? obj, VkvOptions options)
     {
-        if (obj is null) return null;
-        Type type = obj.GetType();
-
-        if (type.IsPrimitive || TypeParsers.CanParse(obj)) return new VkvSingleNode(obj);
-        else if (type.IsPointer) throw new("Cannot serialize a pointer.");
-
-        VkvTreeNode tree = new();
-
-        if (obj is IVkvConvertible vkv) return vkv.ToNodeTree();
-        else if (obj is IDictionary dictionary)
+        try
         {
-            object[] keys = new object[dictionary.Count],
-                     values = new object[dictionary.Count];
-            dictionary.Keys.CopyTo(keys, 0);
-            dictionary.Values.CopyTo(values, 0);
-            for (int i = 0; i < dictionary.Count; i++)
+            if (obj is null) return null;
+            Type type = obj.GetType();
+
+            if (type.IsPrimitive || TypeParsers.CanParse(obj)) return new VkvSingleNode(obj);
+            else if (type.IsPointer) throw new("Cannot serialize a pointer.");
+
+            VkvTreeNode tree = new();
+
+            if (obj is IVkvConvertible vkv) return vkv.ToNodeTree();
+            else if (obj is IDictionary dictionary)
             {
-                tree[SerializeObject(keys.GetValue(i))!] = ToNodeTree(values.GetValue(i), options);
+                object[] keys = new object[dictionary.Count],
+                         values = new object[dictionary.Count];
+                dictionary.Keys.CopyTo(keys, 0);
+                dictionary.Values.CopyTo(values, 0);
+                for (int i = 0; i < dictionary.Count; i++)
+                {
+                    tree[SerializeObject(keys.GetValue(i))!] = ToNodeTree(values.GetValue(i), options);
+                }
+                return tree;
             }
+            else if (obj is ICollection enumerable)
+            {
+                int index = 0;
+                foreach (object item in enumerable)
+                {
+                    tree[SerializeObject(index)!] = ToNodeTree(item, options);
+                    index++;
+                }
+                return tree;
+            }
+
+            IEnumerable<FieldInfo> validFields = from field in type.GetFields()
+                                                 let isPublic = field.IsPublic
+                                                 let isStatic = field.IsStatic
+                                                 let isIgnored = field.CustomAttributes.Any(x =>
+                                                     x.AttributeType == typeof(VkvIgnoreAttribute))
+                                                 let isConst = field.IsLiteral
+                                                 where isPublic && !isStatic && !isIgnored && !isConst
+                                                 select field;
+
+            IEnumerable<PropertyInfo> validProperties;
+            if (options.serializeProperties)
+            {
+                validProperties = from prop in type.GetProperties()
+                                  let canGet = prop.GetMethod is not null
+                                  let isPublic = canGet && prop.GetMethod!.IsPublic
+                                  let isStatic = canGet && prop.GetMethod!.IsStatic
+                                  let isIgnored = prop.CustomAttributes.Any(x =>
+                                      x.AttributeType == typeof(VkvIgnoreAttribute))
+                                  where canGet && isPublic && !isStatic && !isIgnored
+                                  select prop;
+            }
+            else validProperties = Array.Empty<PropertyInfo>();
+
+            foreach (FieldInfo field in validFields)
+            {
+                VkvKeyNameAttribute? namingAttribute = field.GetCustomAttribute<VkvKeyNameAttribute>();
+                tree[namingAttribute?.name ?? field.Name] = ToNodeTree(field.GetValue(obj), options);
+            }
+            foreach (PropertyInfo prop in validProperties)
+            {
+                VkvKeyNameAttribute? namingAttribute = prop.GetCustomAttribute<VkvKeyNameAttribute>();
+                tree[namingAttribute?.name ?? prop.Name] = ToNodeTree(prop.GetValue(obj), options);
+            }
+
             return tree;
         }
-        else if (obj is ICollection enumerable)
+        catch
         {
-            int index = 0;
-            foreach (object item in enumerable)
-            {
-                tree[SerializeObject(index)!] = ToNodeTree(item, options);
-                index++;
-            }
-            return tree;
+            if (!options.noExceptions) throw;
+            return null;
         }
-
-        IEnumerable<FieldInfo> validFields = from field in type.GetFields()
-                                             let isPublic = field.IsPublic
-                                             let isStatic = field.IsStatic
-                                             let isIgnored = field.CustomAttributes.Any(x =>
-                                                 x.AttributeType == typeof(VkvIgnoreAttribute))
-                                             let isConst = field.IsLiteral
-                                             where isPublic && !isStatic && !isIgnored && !isConst
-                                             select field;
-
-        IEnumerable<PropertyInfo> validProperties;
-        if (options.serializeProperties)
-        {
-            validProperties = from prop in type.GetProperties()
-                              let canGet = prop.GetMethod is not null
-                              let isPublic = canGet && prop.GetMethod!.IsPublic
-                              let isStatic = canGet && prop.GetMethod!.IsStatic
-                              let isIgnored = prop.CustomAttributes.Any(x =>
-                                  x.AttributeType == typeof(VkvIgnoreAttribute))
-                              where canGet && isPublic && !isStatic && !isIgnored
-                              select prop;
-        }
-        else validProperties = Array.Empty<PropertyInfo>();
-
-        foreach (FieldInfo field in validFields)
-        {
-            VkvKeyNameAttribute? namingAttribute = field.GetCustomAttribute<VkvKeyNameAttribute>();
-            tree[namingAttribute?.name ?? field.Name] = ToNodeTree(field.GetValue(obj), options);
-        }
-        foreach (PropertyInfo prop in validProperties)
-        {
-            VkvKeyNameAttribute? namingAttribute = prop.GetCustomAttribute<VkvKeyNameAttribute>();
-            tree[namingAttribute?.name ?? prop.Name] = ToNodeTree(prop.GetValue(obj), options);
-        }
-
-        return tree;
     }
     #endregion
 }

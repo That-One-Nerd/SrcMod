@@ -1,6 +1,4 @@
-﻿using System.Reflection.PortableExecutable;
-
-namespace Valve.Vkv;
+﻿namespace Valve.Vkv;
 
 public class VkvSerializer
 {

@@ -6,6 +6,7 @@ public record class VkvOptions
 
     public bool closeWhenFinished;
     public int indentSize;
+    public bool noExceptions;
     public bool resetStreamPosition;
     public bool serializeProperties;
     public SpacingMode spacing;
@@ -16,6 +17,7 @@ public record class VkvOptions
     {
         closeWhenFinished = true;
         indentSize = 4;
+        noExceptions = false;
         resetStreamPosition = false;
         serializeProperties = true;
         spacing = SpacingMode.DoubleTab;
