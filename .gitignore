@@ -1,11 +1,13 @@
 # Visual Studio stuff
 .vs/
 SrcMod/.vs/
-*.sln
 
 # Compiled Files
 SrcMod/Compiled
 SrcMod/Shell/obj/
 
+SrcMod/Valve.NET/obj
+
 # Personal Stuff
+SrcMod/Shell/Modules/TestingModule.cs
 TODO.md

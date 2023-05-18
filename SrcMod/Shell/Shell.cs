@@ -4,7 +4,13 @@ public class Shell
 {
     public const string Author = "That_One_Nerd";
     public const string Name = "SrcMod";
-    public const string Version = "Alpha 0.4.0";
+    public const string Version = "Beta 0.5.0";
+
+    public bool HasAnyDisplayableError => HasDisplayableError || Config.HasDisplayableError;
+    public bool HasAnyDisplayableWarning => HasDisplayableWarning || Config.HasDisplayableWarning;
+
+    public bool HasDisplayableError => p_printedLastReloadError;
+    public bool HasDisplayableWarning => false;
 
     public readonly string? ShellDirectory;
 
@@ -16,10 +22,12 @@ public class Shell
     public List<HistoryItem> History;
     public string WorkingDirectory;
 
-    private bool lastCancel;
-    private bool printedCancel;
+    private bool p_lastCancel;
+    private bool p_printedCancel;
 
-    private BackgroundWorker? activeCommand;
+    private bool p_printedLastReloadError;
+
+    private BackgroundWorker? p_activeCommand;
 
     public Shell()
     {
@@ -88,8 +96,8 @@ public class Shell
         Write(" by ", ConsoleColor.White, false);
         Write($"{Author}", ConsoleColor.DarkYellow);
 
-        lastCancel = false;
-        activeCommand = null;
+        p_lastCancel = false;
+        p_activeCommand = null;
         Console.CancelKeyPress += HandleCancel;
 
         ActiveGame = null;
@@ -139,9 +147,21 @@ public class Shell
 
     public string ReadLine()
     {
-        Write($"\n{WorkingDirectory}", ConsoleColor.DarkGreen, false);
-        if (ActiveGame is not null) Write($" {ActiveGame}", ConsoleColor.DarkYellow, false);
-        if (ActiveMod is not null) Write($" {ActiveMod}", ConsoleColor.Magenta, false);
+        Write("\n", newLine: false);
+        if (HasAnyDisplayableError) Write($"(Error) ", ConsoleColor.DarkRed, false);
+        else if (HasAnyDisplayableWarning) Write($"(Warning) ", ConsoleColor.DarkYellow, false);
+
+        if (ActiveMod is not null) Write($"{ActiveMod} ", ConsoleColor.Magenta, false);
+        
+        if (ActiveMod is not null && Config.LoadedConfig.UseLocalModDirectories)
+        {
+            string directory = Path.GetRelativePath(ActiveMod.RootDirectory, WorkingDirectory);
+            if (directory == ".") directory = string.Empty;
+            Write($"~\\{directory}", ConsoleColor.DarkGreen, false);
+        }
+        else Write($"{WorkingDirectory}", ConsoleColor.DarkGreen, false);
+
+        if (ActiveGame is not null) Write($" ({ActiveGame})", ConsoleColor.Blue, false);
         Write(null);
 
         Write($" {Name}", ConsoleColor.DarkCyan, false);
@@ -149,7 +169,7 @@ public class Shell
 
         bool printed = false;
 
-        if (lastCancel && !printedCancel)
+        if (p_lastCancel && !p_printedCancel)
         {
             // Print the warning. A little bit of mess because execution must
             // continue without funny printing errors but it's alright I guess.
@@ -160,7 +180,7 @@ public class Shell
             Write("Press ^C again to exit the shell.", ConsoleColor.Red);
             PlayWarningSound();
 
-            printedCancel = true;
+            p_printedCancel = true;
             Console.CursorTop += 2;
 
             Console.CursorLeft = originalLeft;
@@ -175,8 +195,8 @@ public class Shell
 
         if (!printed)
         {
-            lastCancel = false;
-            printedCancel = false;
+            p_lastCancel = false;
+            p_printedCancel = false;
         }
 
         return message;
@@ -262,18 +282,18 @@ public class Shell
                     }
                 }
 
-                activeCommand = new();
-                activeCommand.DoWork += runCommand;
-                activeCommand.RunWorkerAsync();
+                p_activeCommand = new();
+                p_activeCommand.DoWork += runCommand;
+                p_activeCommand.RunWorkerAsync();
 
-                activeCommand.WorkerSupportsCancellation = command.CanBeCancelled;
+                p_activeCommand.WorkerSupportsCancellation = command.CanBeCancelled;
 
-                while (activeCommand is not null && activeCommand.IsBusy) Thread.Yield();
+                while (p_activeCommand is not null && p_activeCommand.IsBusy) Thread.Yield();
 
-                if (activeCommand is not null)
+                if (p_activeCommand is not null)
                 {
-                    activeCommand.Dispose();
-                    activeCommand = null;
+                    p_activeCommand.Dispose();
+                    p_activeCommand = null;
                 }
 
                 if (ShellDirectory is null) Write("[WARNING] Could not save config to shell location. Any changes will be ignored.");
@@ -300,24 +320,45 @@ public class Shell
 
     public void ReloadDirectoryInfo()
     {
-        ActiveMod = Mod.ReadDirectory(WorkingDirectory);
+        try
+        {
+            ActiveMod = Mod.ReadDirectory(WorkingDirectory);
+            ActiveGame = ActiveMod?.BaseGame;
 
-        // Update title.
-        string title = "SrcMod";
-        if (ActiveMod is not null) title += $" - {ActiveMod.Name}";
-        Console.Title = title;
+            // Update title.
+            string title = "SrcMod";
+            if (ActiveMod is not null) title += $" - {ActiveMod.Name}";
+            Console.Title = title;
+
+            p_printedLastReloadError = false;
+        }
+        catch (Exception ex)
+        {
+            if (!p_printedLastReloadError)
+            {
+#if RELEASE
+                Write("[ERROR] Error reloading directory information. Some data may not update.",
+                    ConsoleColor.Red);
+#else
+                Write(ex, ConsoleColor.Red);
+#endif
+            }
+
+            p_printedLastReloadError = true;
+            Console.Title = "SrcMod (Error)";
+        }
     }
 
     private void HandleCancel(object? sender, ConsoleCancelEventArgs args)
     {
-        if (activeCommand is not null && activeCommand.IsBusy)
+        if (p_activeCommand is not null && p_activeCommand.IsBusy)
         {
-            if (activeCommand.WorkerSupportsCancellation)
+            if (p_activeCommand.WorkerSupportsCancellation)
             {
                 // Kill the active command.
-                activeCommand.CancelAsync();
-                activeCommand.Dispose();
-                activeCommand = null;
+                p_activeCommand.CancelAsync();
+                p_activeCommand.Dispose();
+                p_activeCommand = null;
             }
             else
             {
@@ -326,18 +367,18 @@ public class Shell
                 PlayErrorSound();
             }
 
-            lastCancel = false;
-            printedCancel = false;
+            p_lastCancel = false;
+            p_printedCancel = false;
             args.Cancel = true;
             return;
         }
 
         // Due to some funny multithreading issues, we want to make the warning label
         // single-threaded on the shell.
-        if (!lastCancel)
+        if (!p_lastCancel)
         {
             // Enable the warning. The "ReadLine" method will do the rest.
-            lastCancel = true;
+            p_lastCancel = true;
             args.Cancel = true; // "Cancel" referring to the cancellation of the cancel operation.
             return;
         }

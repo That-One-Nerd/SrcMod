@@ -4,6 +4,9 @@ public class Config
 {
     public const string FilePath = "config.json";
 
+    public static bool HasDisplayableError => false;
+    public static bool HasDisplayableWarning => p_printedLastSteamWarning;
+
     public static Config Defaults => new();
 
     private static readonly FieldInfo[] p_configSharedFields;
@@ -22,8 +25,14 @@ public class Config
     private static Config p_applied;
     private static Changes? p_changes;
 
+    private static bool p_printedLastSteamWarning;
+
+    // These variables should only exist in the Config class so they aren't marked as shared.
+    private readonly string p_steamLocation;
+
     static Config()
     {
+        // Generate shared fields between the config class and its changes equivalent.
         p_applied = Defaults;
 
         FieldInfo[] configFields = (from field in typeof(Config).GetFields()
@@ -62,11 +71,67 @@ public class Config
 
     public string[] GameDirectories;
     public AskMode RunUnsafeCommands;
+    public bool UseLocalModDirectories;
 
     internal Config()
     {
-        GameDirectories = Array.Empty<string>();
+        // Locate some steam stuff.
+        const string steamLocationKey = @"Software\Valve\Steam";
+        RegistryKey? key = Registry.CurrentUser.OpenSubKey(steamLocationKey);
+        if (key is null)
+        {
+            Write("[FATAL] Cannot locate Steam installation. Do you have Steam installed?",
+                ConsoleColor.DarkRed);
+            Thread.Sleep(1000);
+            BaseModule.QuitShell(-1);
+
+            // This should never run, and is just here to supress
+            // a couple compiler warnings.
+            p_steamLocation = string.Empty;
+            GameDirectories = Array.Empty<string>();
+            RunUnsafeCommands = AskMode.Ask;
+            return;
+        }
+        p_steamLocation = (string)key.GetValue("SteamPath")!;
+
+        // Assign config variables.
+
+        string gameDirDataPath = Path.Combine(p_steamLocation, @"steamapps\libraryfolders.vdf");
+
+        FileStream gameDirData = new(gameDirDataPath, FileMode.Open);
+        try
+        {
+            LibraryFolder[]? folders = SerializeVkv.Deserialize<LibraryFolder[]>(gameDirData);
+            if (folders is null)
+            {
+                if (!p_printedLastSteamWarning)
+                    Write("[WARNING] Error parsing Steam game directories.", ConsoleColor.DarkYellow);
+                GameDirectories = Array.Empty<string>();
+                p_printedLastSteamWarning = true;
+            }
+            else
+            {
+                GameDirectories = new string[folders.Length];
+                for (int i = 0; i < folders.Length; i++) GameDirectories[i] = folders[i].path;
+                p_printedLastSteamWarning = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            if (!p_printedLastSteamWarning)
+            {
+#if RELEASE
+                Write("[WARNING] Error parsing Steam game directories.", ConsoleColor.DarkYellow);
+#else
+                Write(ex, ConsoleColor.DarkYellow);
+#endif
+            }
+            GameDirectories = Array.Empty<string>();
+            p_printedLastSteamWarning = true;
+        }
+
         RunUnsafeCommands = AskMode.Ask;
+        UseLocalModDirectories = true;
     }
 
     public Config ApplyChanges(Changes changes)
@@ -132,7 +197,7 @@ public class Config
         }
         StreamReader reader = new(fullPath);
         JsonTextReader jsonReader = new(reader);
-        p_changes = Serializer.Deserialize<Changes?>(jsonReader);
+        p_changes = Tools.SerializerJson.Deserialize<Changes?>(jsonReader);
         jsonReader.Close();
         reader.Close();
 
@@ -153,7 +218,7 @@ public class Config
         {
             Indentation = 4
         };
-        Serializer.Serialize(jsonWriter, p_changes);
+        Tools.SerializerJson.Serialize(jsonWriter, p_changes);
         jsonWriter.Close();
         writer.Close();
     }
@@ -167,6 +232,7 @@ public class Config
     {
         public string[]? GameDirectories;
         public AskMode? RunUnsafeCommands;
+        public bool? UseLocalModDirectories;
 
         public bool Any() => typeof(Changes).GetFields().Any(x => x.GetValue(this) is not null);
     }

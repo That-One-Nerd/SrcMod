@@ -1,4 +1,4 @@
-﻿namespace SrcMod.Shell.Modules.ObjectModels;
+﻿namespace Valve.Miscellaneous;
 
 public static class TypeParsers
 {
