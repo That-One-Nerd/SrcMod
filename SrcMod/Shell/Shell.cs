@@ -161,7 +161,7 @@ public class Shell
         }
         else Write($"{WorkingDirectory}", ConsoleColor.DarkGreen, false);
 
-        if (ActiveGame is not null) Write($" ({ActiveGame})", ConsoleColor.DarkYellow, false);
+        if (ActiveGame is not null) Write($" ({ActiveGame})", ConsoleColor.Blue, false);
         Write(null);
 
         Write($" {Name}", ConsoleColor.DarkCyan, false);
@@ -323,6 +323,7 @@ public class Shell
         try
         {
             ActiveMod = Mod.ReadDirectory(WorkingDirectory);
+            ActiveGame = ActiveMod?.BaseGame;
 
             // Update title.
             string title = "SrcMod";
