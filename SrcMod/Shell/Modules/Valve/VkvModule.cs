@@ -17,28 +17,34 @@ public static class VkvModule
         VkvModifyWhole(ref parentNode, ref parentNodeName);
     }
 
+    [Command("edit")]
+    public static void EditVkv(string path)
+    {
+        if (!File.Exists(path)) throw new($"No file exists at \"{path}\". Did you mean to run \"vkv create\"?");
+
+        VkvNode? parentNode;
+        string parentNodeName = "this doesn't work yet.";
+        try
+        {
+            FileStream fs = new(path, FileMode.Open);
+            parentNode = SerializeVkv.Deserialize(fs);
+
+            if (parentNode is null) throw new("Deserialized VKV node is null.");
+        }
+        catch
+        {
+#if DEBUG
+            throw;
+#else
+            throw new($"Error parsing file to Valve KeyValues format: {e.Message}");
+#endif
+        }
+
+        VkvModifyWhole(ref parentNode, ref parentNodeName);
+    }
+
     private static void VkvModifyWhole(ref VkvNode node, ref string nodeName)
     {
-        VkvDisplayNode(node, nodeName);
-    }
-    private static void VkvDisplayNode(in VkvNode? node, in string nodeName, in int indent = 0)
-    {
-        int spaceCount = indent * 4;
-
-        if (node is null) return;
-        else if (node is VkvSingleNode single)
-        {
-            Write(new string(' ', spaceCount) + $"\"{nodeName}\"  \"{single.value}\"");
-        }
-        else if (node is VkvTreeNode tree)
-        {
-            Write(new string(' ', spaceCount) + $"\"{nodeName}\"\n" + new string(' ', spaceCount) + "{");
-            foreach (KeyValuePair<string, VkvNode?> subNode in tree)
-            {
-                VkvDisplayNode(subNode.Value, subNode.Key, indent + 1);
-            }
-            Write(new string(' ', spaceCount) + "}");
-        }
-        else return;
+        // TODO
     }
 }
