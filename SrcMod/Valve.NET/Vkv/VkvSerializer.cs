@@ -29,6 +29,23 @@ public class VkvSerializer
             if (!p_options.closeWhenFinished && p_options.resetStreamPosition) stream.Seek(pos, SeekOrigin.Begin);
         }
     }
+    public VkvNode? Deserialize(Stream stream, out string name)
+    {
+        long pos = stream.Position;
+        StreamReader reader = new(stream, leaveOpen: !p_options.closeWhenFinished);
+        try
+        {
+            VkvNode? result = VkvConvert.DeserializeNode(reader, p_options, out name);
+            reader.Close();
+            if (!p_options.closeWhenFinished && p_options.resetStreamPosition) stream.Seek(pos, SeekOrigin.Begin);
+            return result;
+        }
+        finally
+        {
+            reader.Close();
+            if (!p_options.closeWhenFinished && p_options.resetStreamPosition) stream.Seek(pos, SeekOrigin.Begin);
+        }
+    }
     public T? Deserialize<T>(Stream stream)
     {
         VkvNode? result = Deserialize(stream);

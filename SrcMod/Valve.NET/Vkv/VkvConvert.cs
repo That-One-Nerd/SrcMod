@@ -19,16 +19,19 @@ public static class VkvConvert
 
     #region DeserializeNode
     public static VkvNode? DeserializeNode(StreamReader reader) =>
-        DeserializeNode(reader, VkvOptions.Default);
-    public static VkvNode? DeserializeNode(StreamReader reader, VkvOptions options)
+        DeserializeNode(reader, VkvOptions.Default, out _);
+    public static VkvNode? DeserializeNode(StreamReader reader, VkvOptions options) =>
+        DeserializeNode(reader, options, out _);
+    public static VkvNode? DeserializeNode(StreamReader reader, VkvOptions options, out string name)
     {
         try
         {
-            return DeserializeNode(reader, options, out _, null);
+            return DeserializeNode(reader, options, out name, null);
         }
         catch
         {
             if (!options.noExceptions) throw;
+            name = string.Empty;
             return null;
         }
     }
