@@ -63,7 +63,9 @@ public static class VkvConvert
             string? current;
             while ((current = reader.ReadLine()?.Trim()) is not null)
             {
-                if (current == "}") break;
+                if (string.IsNullOrWhiteSpace(current)) continue;
+                else if (current == "}") break;
+
                 VkvNode? output = DeserializeNode(reader, options, out string subName, current);
                 tree[subName] = output;
             }
