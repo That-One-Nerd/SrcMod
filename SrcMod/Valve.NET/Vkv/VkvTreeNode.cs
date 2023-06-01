@@ -60,23 +60,27 @@ public class VkvTreeNode : VkvNode, IEnumerable<KeyValuePair<string, VkvNode>>
             }
         }
     }
-    public VkvNode? this[int index]
+    public KeyValuePair<string, VkvNode>? this[int index]
     {
         get
         {
-            if (p_subNodes.Count >= index || index < 0) return null;
-            return p_subNodes[index];
+            if (index >= SubNodeCount || index < 0) return null;
+            return new(p_subNodeKeys[index], p_subNodes[index]);
         }
         set
         {
-            if (p_subNodes.Count >= index || index < 0) throw new IndexOutOfRangeException();
+            if (index >= SubNodeCount || index < 0) throw new IndexOutOfRangeException();
 
             if (value is null)
             {
                 p_subNodeKeys.RemoveAt(index);
                 p_subNodes.RemoveAt(index);
             }
-            else p_subNodes[index] = value;
+            else
+            {
+                p_subNodeKeys[index] = value.Value.Key;
+                p_subNodes[index] = value.Value.Value;
+            }
         }
     }
     public KeyValuePair<string, VkvNode>? this[Func<int, KeyValuePair<string, VkvNode>, bool> predicate]
