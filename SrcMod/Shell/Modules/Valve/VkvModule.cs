@@ -4,6 +4,7 @@
 public static class VkvModule
 {
     [Command("create")]
+    [CanCancel(false)]
     public static void CreateVkv(string path)
     {
         if (File.Exists(path)) throw new($"File already exists at \"{path}\". Did you mean to run \"vkv edit\"?");
@@ -18,6 +19,7 @@ public static class VkvModule
     }
 
     [Command("edit")]
+    [CanCancel(false)]
     public static void EditVkv(string path)
     {
         if (!File.Exists(path)) throw new($"No file exists at \"{path}\". Did you mean to run \"vkv create\"?");
@@ -63,10 +65,10 @@ public static class VkvModule
         Console.SetCursorPosition(0, context.startingCursor + context.displayLines.Count);
     }
 
-    private static VkvModifyReturnOption VkvModifyNode(ref VkvNode node, ref string nodeName,
+    private static VkvModifyOption VkvModifyNode(ref VkvNode node, ref string nodeName,
         ref VkvModifyContext context, bool isGlobal)
     {
-        const string add = " started";
+        string add = $" {nodeName}";
         Console.Title += add;
 
         VkvModifyMode mode = VkvModifyMode.Default;
@@ -77,6 +79,7 @@ public static class VkvModule
         VkvSingleNode? single = node as VkvSingleNode;
         VkvTreeNode? tree = node as VkvTreeNode;
 
+        VkvModifyOption? option = null;
         while (true)
         {
             // Color the display white, wait for a key, then reset and handle the key press.
@@ -86,15 +89,20 @@ public static class VkvModule
             Console.Write(context.displayLines[context.lineIndex]);
             Console.ResetColor();
 
-            ConsoleKeyInfo key = Console.ReadKey(true);
+            if (!option.HasValue) option = Console.ReadKey(true).Key switch
+            {
+                ConsoleKey.DownArrow => VkvModifyOption.IncSubIndex,
+                ConsoleKey.UpArrow => VkvModifyOption.DecSubIndex,
+                _ => VkvModifyOption.Nothing
+            };
 
             Console.CursorLeft = 0; // This is assuming the cursor hasn't moved, which it shouldn't.
             Console.Write(context.displayLines[context.lineIndex]);
 
             // Now we handle the key press.
-            switch (key.Key)
+            switch (option)
             {
-                case ConsoleKey.DownArrow:
+                case VkvModifyOption.IncSubIndex:
                     if (tree is not null)
                     {
                         subIndex++;
@@ -112,34 +120,23 @@ public static class VkvModule
                             {
                                 string subNodeKey = subNode.Value.Key;
                                 VkvNode subNodeValue = subNode.Value.Value;
-                                VkvModifyReturnOption status = 
+                                VkvModifyOption status = 
                                     VkvModifyNode(ref subNodeValue, ref subNodeKey, ref context, false);
 
                                 // Update the parent node with our modified sub node.
                                 tree[subIndex] = new(subNodeKey, subNodeValue);
 
-                                switch (status)
-                                {
-                                    case VkvModifyReturnOption.IncSubIndex:
-                                        subIndex++;
-                                        context.lineIndex++;
-                                        break;
-
-                                    case VkvModifyReturnOption.DecSubIndex:
-                                        subIndex--;
-                                        context.lineIndex -= 2;
-                                        break;
-                                }
+                                // Set the next instruction.
+                                option = status;
                             }
                         }
                         else if (subIndex == tree.SubNodeCount + 1)
                         {
                             // We're outside the maximum sub nodes. Let's increment the parent
-                            // sub index and end this method (and increment the line).
+                            // sub index and end this method.
 
-                            context.lineIndex++;
                             Console.Title = Console.Title[..^add.Length];
-                            return VkvModifyReturnOption.IncSubIndex;
+                            return VkvModifyOption.IncSubIndex;
                         }
                         else
                         {
@@ -157,24 +154,14 @@ public static class VkvModule
                                     string subNodeKey = subNode.Value.Key;
                                     VkvNode subNodeValue = subNode.Value.Value;
 
-                                    VkvModifyReturnOption status = 
+                                    VkvModifyOption status = 
                                         VkvModifyNode(ref subNodeValue, ref subNodeKey, ref context, false);
 
                                     // Update the parent node with our modified sub node.
                                     tree[subIndex] = new(subNodeKey, subNodeValue);
 
-                                    switch (status)
-                                    {
-                                        case VkvModifyReturnOption.IncSubIndex:
-                                            subIndex++;
-                                            context.lineIndex++;
-                                            break;
-
-                                        case VkvModifyReturnOption.DecSubIndex:
-                                            subIndex--;
-                                            context.lineIndex--;
-                                            break;
-                                    }
+                                    // Set the next instruction.
+                                    option = status;
                                 }
                             }
                             else
@@ -188,13 +175,12 @@ public static class VkvModule
                         // We aren't in a tree. We just change the parent sub index and
                         // end this method (and increment the line).
 
-                        context.lineIndex++;
                         Console.Title = Console.Title[..^add.Length];
-                        return VkvModifyReturnOption.IncSubIndex;
+                        return VkvModifyOption.IncSubIndex;
                     }
                     break;
 
-                case ConsoleKey.UpArrow:
+                case VkvModifyOption.DecSubIndex:
                     if (tree is not null)
                     {
                         subIndex--;
@@ -204,9 +190,8 @@ public static class VkvModule
                             // We're outside the maximum sub nodes. Let's decrement the parent
                             // sub index and end this method (and decrement the line).
 
-                            context.lineIndex--;
                             Console.Title = Console.Title[..^add.Length];
-                            return VkvModifyReturnOption.DecSubIndex;
+                            return VkvModifyOption.DecSubIndex;
                         }
                         else if (subIndex == -1)
                         {
@@ -227,9 +212,8 @@ public static class VkvModule
                         // We aren't in a tree. We just change the parent sub index and
                         // end this method (and decrement the line).
 
-                        context.lineIndex--;
                         Console.Title = Console.Title[..^add.Length];
-                        return VkvModifyReturnOption.DecSubIndex;
+                        return VkvModifyOption.DecSubIndex;
                     }
                     break;
             }
@@ -292,7 +276,7 @@ public static class VkvModule
     {
         Default
     }
-    private enum VkvModifyReturnOption
+    private enum VkvModifyOption
     {
         Nothing,
         IncSubIndex,
