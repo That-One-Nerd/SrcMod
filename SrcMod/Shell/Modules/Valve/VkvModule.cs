@@ -33,12 +33,12 @@ public static class VkvModule
 
             if (parentNode is null) throw new("Deserialized VKV node is null.");
         }
-        catch
+        catch (Exception ex)
         {
 #if DEBUG
             throw;
 #else
-            throw new($"Error parsing file to Valve KeyValues format: {e.Message}");
+            throw new($"Error parsing file to Valve KeyValues format: {ex.Message}");
 #endif
         }
 
@@ -68,10 +68,10 @@ public static class VkvModule
     private static VkvModifyOption VkvModifyNode(ref VkvNode node, ref string nodeName,
         ref VkvModifyContext context, bool isGlobal)
     {
+#if DEBUG
         string add = $" {nodeName}";
         Console.Title += add;
-
-        VkvModifyMode mode = VkvModifyMode.Default;
+#endif
 
         int subIndex = -1; // Represents the index of the sub node currently being modified.
         // If the variable is set to -1, it represents the title.
@@ -80,24 +80,26 @@ public static class VkvModule
         VkvTreeNode? tree = node as VkvTreeNode;
 
         VkvModifyOption? option = null;
+        VkvModifySelection selection = VkvModifySelection.Name;
         while (true)
         {
             // Color the display white, wait for a key, then reset and handle the key press.
+            string line = context.displayLines[context.lineIndex];
+
             Console.SetCursorPosition(0, context.startingCursor + context.lineIndex);
-            Console.ForegroundColor = ConsoleColor.Black;
-            Console.BackgroundColor = ConsoleColor.White;
-            Console.Write(context.displayLines[context.lineIndex]);
+            Console.Write(Whitify(line, selection));
             Console.ResetColor();
 
             if (!option.HasValue) option = Console.ReadKey(true).Key switch
             {
                 ConsoleKey.DownArrow => VkvModifyOption.IncSubIndex,
                 ConsoleKey.UpArrow => VkvModifyOption.DecSubIndex,
+                ConsoleKey.Escape => VkvModifyOption.ExitAll,
                 _ => VkvModifyOption.Nothing
             };
 
             Console.CursorLeft = 0; // This is assuming the cursor hasn't moved, which it shouldn't.
-            Console.Write(context.displayLines[context.lineIndex]);
+            Console.Write(line + new string(' ', Console.WindowWidth - line.Length));
 
             // Now we handle the key press.
             switch (option)
@@ -134,8 +136,12 @@ public static class VkvModule
                         {
                             // We're outside the maximum sub nodes. Let's increment the parent
                             // sub index and end this method.
+                            // Incrementing the line index to overlook the next line, '}'
 
+#if DEBUG
                             Console.Title = Console.Title[..^add.Length];
+#endif
+                            context.lineIndex++;
                             return VkvModifyOption.IncSubIndex;
                         }
                         else
@@ -167,6 +173,14 @@ public static class VkvModule
                             else
                             {
                                 // TODO: This is where we can decide to add sub nodes.
+                                option = null;
+                                selection = VkvModifySelection.CreateNew;
+
+#if DEBUG
+                                string secondAdd = " [CREATE NEW]";
+                                add += secondAdd;
+                                Console.Title += secondAdd;
+#endif
                             }
                         }
                     }
@@ -175,47 +189,27 @@ public static class VkvModule
                         // We aren't in a tree. We just change the parent sub index and
                         // end this method (and increment the line).
 
+#if DEBUG
                         Console.Title = Console.Title[..^add.Length];
+#endif
                         return VkvModifyOption.IncSubIndex;
                     }
                     break;
 
                 case VkvModifyOption.DecSubIndex:
-                    if (tree is not null)
-                    {
-                        subIndex--;
-
-                        if (subIndex == -2)
-                        {
-                            // We're outside the maximum sub nodes. Let's decrement the parent
-                            // sub index and end this method (and decrement the line).
-
-                            Console.Title = Console.Title[..^add.Length];
-                            return VkvModifyOption.DecSubIndex;
-                        }
-                        else if (subIndex == -1)
-                        {
-                            // We just shifted down from the title to the first sub node.
-                            // We need to overlook the next line, '{'.
-
-                            context.lineIndex -= 2;
-                        }
-                        else
-                        {
-                            // We're in a valid range. Let's just change the sub node we're
-                            // focused on.
-                            context.lineIndex--;
-                        }
-                    }
-                    else
-                    {
-                        // We aren't in a tree. We just change the parent sub index and
-                        // end this method (and decrement the line).
-
-                        Console.Title = Console.Title[..^add.Length];
-                        return VkvModifyOption.DecSubIndex;
-                    }
+                    // TODO: Implement when moving downward is complete.
+                    // It's a little weird to not be able to move back up,
+                    // I know, but it's gonna be weirder to implement, and
+                    // I only want to do it once.
+                    option = null;
                     break;
+
+                case VkvModifyOption.ExitAll:
+                    return VkvModifyOption.ExitAll;
+
+                default:
+                    option = null;
+                    continue;
             }
         }
     }
@@ -259,6 +253,65 @@ public static class VkvModule
         return lines;
     }
 
+    private static string Whitify(string content, VkvModifySelection selection)
+    {
+        StringBuilder result = new();
+
+        // This is definitely optimizable, but I don't feel like doing that yet.
+        // Maybe in the future.
+        int firstQuote = content.IndexOf('\"'),
+            secondQuote = content[(firstQuote + 1)..].IndexOf('\"') + firstQuote + 1,
+            thirdQuote = content[(secondQuote + 1)..].IndexOf('\"') + secondQuote + 1,
+            fourthQuote = content[(thirdQuote + 1)..].IndexOf('\"') + thirdQuote + 1;
+
+        int startChar = 0;
+        while (char.IsWhiteSpace(content[startChar])) startChar++;
+
+        int endChar = content.Length - 1;
+        while (char.IsWhiteSpace(content[endChar])) endChar--;
+
+        switch (selection)
+        {
+            case VkvModifySelection.Name:
+                if (firstQuote < 0 || secondQuote < 0) return content;
+
+                result.Append(content[..firstQuote]);
+                result.Append("\x1b[107m");
+                result.Append(content[firstQuote..(secondQuote + 1)]);
+                result.Append("\x1b[0m");
+                result.Append(content[(secondQuote + 1)..]);
+                break;
+
+            case VkvModifySelection.Value:
+                if (thirdQuote < 0 || fourthQuote < 0) return content;
+
+                result.Append(content[..thirdQuote]);
+                result.Append("\x1b[107m");
+                result.Append(content[thirdQuote..(fourthQuote + 1)]);
+                result.Append("\x1b[0m");
+                result.Append(content[(fourthQuote + 1)..]);
+                break;
+
+            case VkvModifySelection.Delete:
+                const string addDelete = "[Delete]";
+
+                result.Append($"\x1b[107m\x1b[31m{addDelete}\x1b[0m ");
+                if (addDelete.Length + 1 > startChar) result.Append(content[startChar..]);
+                else result.Append(content[(addDelete.Length + 1)..]);
+                break;
+
+            case VkvModifySelection.CreateNew:
+                result.Append(content[..startChar]);
+                result.Append("\x1b[107m");
+                result.Append(content[startChar..(endChar + 1)]);
+                result.Append("\x1b[0m");
+                result.Append(content[(endChar + 1)..]);
+                break;
+        }
+
+        return result.ToString();
+    }
+
     private class VkvModifyContext
     {
         public required List<string> displayLines;
@@ -272,15 +325,19 @@ public static class VkvModule
         }
     }
 
-    private enum VkvModifyMode
-    {
-        Default
-    }
     private enum VkvModifyOption
     {
         Nothing,
         IncSubIndex,
-        DecSubIndex
+        DecSubIndex,
+        ExitAll
     }
-    #endregion
+    private enum VkvModifySelection
+    {
+        Name,
+        Value,
+        Delete,
+        CreateNew
+    }
+#endregion
 }
