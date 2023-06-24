@@ -16,6 +16,20 @@ public static class VkvModule
         string parentNodeName = "tree";
 
         VkvModifyWhole(ref parentNode, ref parentNodeName);
+
+        try
+        {
+            FileStream fs = new(path, FileMode.Create);
+            SerializeVkv.Serialize(fs, parentNode, parentNodeName);
+        }
+        catch (Exception ex)
+        {
+#if DEBUG
+            throw;
+#else
+            throw new($"Error serializing result to file: {ex.Message}");
+#endif
+        }
     }
 
     [Command("edit")]
@@ -43,9 +57,23 @@ public static class VkvModule
         }
 
         VkvModifyWhole(ref parentNode, ref parentNodeName);
+
+        try
+        {
+            FileStream fs = new(path, FileMode.Create);
+            SerializeVkv.Serialize(fs, parentNode, parentNodeName);
+        }
+        catch (Exception ex)
+        {
+#if DEBUG
+            throw;
+#else
+            throw new($"Error serializing result to file: {ex.Message}");
+#endif
+        }
     }
 
-    #region The VKV Modification System
+#region The VKV Modification System
     private static void VkvModifyWhole(ref VkvNode parentNode, ref string parentNodeName)
     {
         // Generate reference context for passing to the modification methods.
@@ -94,6 +122,9 @@ public static class VkvModule
             {
                 ConsoleKey.DownArrow => VkvModifyOption.IncSubIndex,
                 ConsoleKey.UpArrow => VkvModifyOption.DecSubIndex,
+                ConsoleKey.RightArrow => VkvModifyOption.RShiftMode,
+                ConsoleKey.LeftArrow => VkvModifyOption.LShiftMode,
+                ConsoleKey.Enter => VkvModifyOption.Use,
                 ConsoleKey.Escape => VkvModifyOption.ExitAll,
                 _ => VkvModifyOption.Nothing
             };
@@ -204,14 +235,162 @@ public static class VkvModule
                     option = null;
                     break;
 
-                case VkvModifyOption.ExitAll:
-                    return VkvModifyOption.ExitAll;
+                case VkvModifyOption.RShiftMode:
+                    selection = selection switch
+                    {
+                        VkvModifySelection.Delete => VkvModifySelection.Name,
+                        VkvModifySelection.Name => single is null ? selection : VkvModifySelection.Value,
+                        _ => selection
+                    };
+                    option = null;
+                    break;
+
+                case VkvModifyOption.LShiftMode:
+                    selection = selection switch
+                    {
+                        VkvModifySelection.Name => VkvModifySelection.Delete,
+                        VkvModifySelection.Value => VkvModifySelection.Name,
+                        _ => selection
+                    };
+                    option = null;
+                    break;
+
+                case VkvModifyOption.Use:
+                    switch (selection)
+                    {
+                        case VkvModifySelection.Delete:
+                            // TODO
+                            break;
+
+                        case VkvModifySelection.Name:
+                            VkvModifyRefactorName(ref nodeName, ref context);
+                            break;
+
+                        case VkvModifySelection.Value:
+                            if (single is null)
+                            {
+                                option = null;
+                                continue;
+                            }
+                            VkvModifyRefactorValue(ref single, ref context);
+                            break;
+
+                        case VkvModifySelection.CreateNew:
+                            // TODO
+                            break;
+                    }
+                    option = null;
+                    break;
+
+                case VkvModifyOption.ExitAll: return VkvModifyOption.ExitAll;
 
                 default:
                     option = null;
                     continue;
             }
         }
+    }
+
+    private static void VkvModifyRefactorName(ref string nodeName, ref VkvModifyContext context)
+    {
+        string originalName = new(nodeName);
+        string edit = context.displayLines[context.lineIndex];
+
+        int firstQuote = edit.IndexOf('\"'),
+            secondQuote = edit[(firstQuote + 1)..].IndexOf('\"') + firstQuote + 1;
+
+        int displayIndex = secondQuote, nameIndex = nodeName.Length;
+
+        int additionalAnsiTakeoff = 0;
+
+        {
+            // I almost never do this ("this" being the brackets while
+            // already inside a method), but I also don't like
+            // keeping temporary variables around for no reason.
+            bool tempActive = false;
+            for (int i = 0; i < displayIndex; i++)
+            {
+                if (edit[i] == '\x1b') tempActive = true;
+                if (tempActive) additionalAnsiTakeoff++;
+                if (tempActive && edit[i] == 'm') tempActive = false;
+            }
+        }
+
+        while (true)
+        {
+            Console.CursorLeft = 0;
+            Console.Write(Whitify(edit, VkvModifySelection.Name, true));
+
+            Console.CursorLeft = displayIndex - additionalAnsiTakeoff;
+            Console.CursorVisible = true;
+            ConsoleKeyInfo key = Console.ReadKey(true);
+            Console.CursorVisible = false;
+            if (char.IsControl(key.KeyChar))
+            {
+                // TODO: Adding clipboard support might be cool (but also a pain).
+                bool end = false;
+                switch (key.Key)
+                {
+                    case ConsoleKey.Backspace:
+                        if (nameIndex > 0)
+                        {
+                            nodeName = nodeName.Remove(nameIndex - 1, 1);
+                            edit = edit.Remove(displayIndex - 1, 1) + ' ';
+                            displayIndex--;
+                            nameIndex--;
+                        }
+                        break;
+
+                    case ConsoleKey.Delete:
+                        if (nameIndex < nodeName.Length)
+                        {
+                            nodeName = nodeName.Remove(nameIndex, 1);
+                            edit = edit.Remove(displayIndex, 1) + ' ';
+                        }
+                        break;
+
+                    case ConsoleKey.Escape:
+                        nodeName = originalName;
+                        edit = context.displayLines[context.lineIndex];
+                        end = true;
+                        break;
+
+                    case ConsoleKey.Enter:
+                        end = true;
+                        break;
+
+                    case ConsoleKey.LeftArrow:
+                        if (nameIndex > 0)
+                        {
+                            displayIndex--;
+                            nameIndex--;
+                        }
+                        break;
+
+                    case ConsoleKey.RightArrow:
+                        if (nameIndex < nodeName.Length)
+                        {
+                            displayIndex++;
+                            nameIndex++;
+                        }
+                        break;
+                }
+                if (end) break;
+            }
+            else
+            {
+                nodeName = nodeName.Insert(nameIndex, key.KeyChar.ToString());
+                edit = edit.Insert(displayIndex, key.KeyChar.ToString()).TrimEnd();
+                displayIndex++;
+                nameIndex++;
+            }
+        }
+
+        context.displayLines[context.lineIndex] = edit.TrimEnd();
+    }
+    private static void VkvModifyRefactorValue(ref VkvSingleNode node, ref VkvModifyContext context)
+    {
+        
     }
 
     private static void VkvModifyPrintAll(ref VkvModifyContext context, bool resetCursor)
@@ -253,12 +432,14 @@ public static class VkvModule
         return lines;
     }
 
-    private static string Whitify(string content, VkvModifySelection selection)
+    private static string Whitify(string content, VkvModifySelection selection, bool blink = false)
     {
         StringBuilder result = new();
 
         // This is definitely optimizable, but I don't feel like doing that yet.
         // Maybe in the future.
+        // For future reference, when (if) this is optimized, I am doing stuff like this in this
+        // method along with the name and value refactoring methods.
         int firstQuote = content.IndexOf('\"'),
             secondQuote = content[(firstQuote + 1)..].IndexOf('\"') + firstQuote + 1,
             thirdQuote = content[(secondQuote + 1)..].IndexOf('\"') + secondQuote + 1,
@@ -276,9 +457,18 @@ public static class VkvModule
                 if (firstQuote < 0 || secondQuote < 0) return content;
 
                 result.Append(content[..firstQuote]);
-                result.Append("\x1b[107m");
-                result.Append(content[firstQuote..(secondQuote + 1)]);
-                result.Append("\x1b[0m");
+                if (blink)
+                {
+                    result.Append("\"\x1b[5m");
+                    result.Append(content[(firstQuote + 1)..secondQuote]);
+                    result.Append("\x1b[25m\"");
+                }
+                else
+                {
+                    result.Append("\x1b[107m");
+                    result.Append(content[firstQuote..(secondQuote + 1)]);
+                    result.Append("\x1b[0m");
+                }
                 result.Append(content[(secondQuote + 1)..]);
                 break;
 
@@ -286,9 +476,18 @@ public static class VkvModule
                 if (thirdQuote < 0 || fourthQuote < 0) return content;
 
                 result.Append(content[..thirdQuote]);
-                result.Append("\x1b[107m");
-                result.Append(content[thirdQuote..(fourthQuote + 1)]);
-                result.Append("\x1b[0m");
+                if (blink)
+                {
+                    result.Append("\"\x1b[5m");
+                    result.Append(content[(thirdQuote + 1)..fourthQuote]);
+                    result.Append("\x1b[25m\"");
+                }
+                else
+                {
+                    result.Append("\x1b[107m");
+                    result.Append(content[thirdQuote..(fourthQuote + 1)]);
+                    result.Append("\x1b[0m");
+                }
                 result.Append(content[(fourthQuote + 1)..]);
                 break;
 
@@ -330,13 +529,16 @@ public static class VkvModule
         Nothing,
         IncSubIndex,
         DecSubIndex,
+        RShiftMode,
+        LShiftMode,
+        Use,
         ExitAll
     }
     private enum VkvModifySelection
     {
+        Delete,
         Name,
         Value,
-        Delete,
         CreateNew
     }
 #endregion

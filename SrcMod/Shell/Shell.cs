@@ -4,7 +4,7 @@ public class Shell
 {
     public const string Author = "That_One_Nerd";
     public const string Name = "SrcMod";
-    public const string Version = "Beta 0.5.0";
+    public const string Version = "Beta 0.6.0";
 
     public bool HasAnyDisplayableError => HasDisplayableError || Config.HasDisplayableError;
     public bool HasAnyDisplayableWarning => HasDisplayableWarning || Config.HasDisplayableWarning;
