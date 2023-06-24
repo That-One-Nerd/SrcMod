@@ -74,19 +74,23 @@ public static class VkvModule
     }
 
 #region The VKV Modification System
-    private static void VkvModifyWhole(ref VkvNode parentNode, ref string parentNodeName)
+    private static void VkvModifyWhole(ref VkvNode rootNode, ref string rootNodeName)
     {
         // Generate reference context for passing to the modification methods.
         VkvModifyContext context = new()
         {
-            displayLines = VkvModifyGetLines(parentNode, parentNodeName, 0)
+            displayLines = VkvModifyGetLines(rootNode, rootNodeName, 0),
+            rootNode = rootNode,
+            rootNodeName = rootNodeName
         };
 
         // Make an initial printing of the vkv node.
         VkvModifyPrintAll(ref context, false);
 
-        // Start modifying the parent node.
-        VkvModifyNode(ref parentNode, ref parentNodeName, ref context, true);
+        // Start modifying the root node.
+        VkvTreeNode? nullNode = null;
+        int nullInt = default;
+        VkvModifyNode(ref rootNode, ref rootNodeName, ref context, true, ref nullNode, ref nullInt);
 
         // Done editing, let's reset the cursor position and exit the command.
         Console.ResetColor();
@@ -94,7 +98,7 @@ public static class VkvModule
     }
 
     private static VkvModifyOption VkvModifyNode(ref VkvNode node, ref string nodeName,
-        ref VkvModifyContext context, bool isGlobal)
+        ref VkvModifyContext context, bool isGlobal, ref VkvTreeNode? parentNode, ref int parentSubIndex)
     {
 #if DEBUG
         string add = $" {nodeName}";
@@ -154,10 +158,10 @@ public static class VkvModule
                                 string subNodeKey = subNode.Value.Key;
                                 VkvNode subNodeValue = subNode.Value.Value;
                                 VkvModifyOption status = 
-                                    VkvModifyNode(ref subNodeValue, ref subNodeKey, ref context, false);
+                                    VkvModifyNode(ref subNodeValue, ref subNodeKey, ref context, false, ref tree, ref subIndex);
 
                                 // Update the parent node with our modified sub node.
-                                tree[subIndex] = new(subNodeKey, subNodeValue);
+                                tree![subIndex] = new(subNodeKey, subNodeValue);
 
                                 // Set the next instruction.
                                 option = status;
@@ -192,10 +196,10 @@ public static class VkvModule
                                     VkvNode subNodeValue = subNode.Value.Value;
 
                                     VkvModifyOption status = 
-                                        VkvModifyNode(ref subNodeValue, ref subNodeKey, ref context, false);
+                                        VkvModifyNode(ref subNodeValue, ref subNodeKey, ref context, false, ref tree, ref subIndex);
 
                                     // Update the parent node with our modified sub node.
-                                    tree[subIndex] = new(subNodeKey, subNodeValue);
+                                    tree![subIndex] = new(subNodeKey, subNodeValue);
 
                                     // Set the next instruction.
                                     option = status;
@@ -248,7 +252,7 @@ public static class VkvModule
                 case VkvModifyOption.LShiftMode:
                     selection = selection switch
                     {
-                        VkvModifySelection.Name => VkvModifySelection.Delete,
+                        VkvModifySelection.Name => isGlobal ? VkvModifySelection.Name : VkvModifySelection.Delete,
                         VkvModifySelection.Value => VkvModifySelection.Name,
                         _ => selection
                     };
@@ -259,7 +263,24 @@ public static class VkvModule
                     switch (selection)
                     {
                         case VkvModifySelection.Delete:
-                            // TODO
+                            string unrefNodeName = nodeName;
+                            VkvNode unrefNode = node;
+                            parentNode![parentSubIndex - 1] = null;
+
+                            // Inefficient, yeah, but again, this is intended to
+                            // be used by humans, not robots. Feel free to improve
+                            // it if you want, but I probably won't.
+
+                            List<string> newLines = VkvModifyGetLines(context.rootNode, context.rootNodeName, 0);
+                            int endBuffer = context.displayLines.Count - newLines.Count;
+                            context.displayLines = newLines;
+
+                            VkvModifyPrintAll(ref context, true, true);
+
+                            // TODO: Kinda works, but it's quite buggy. Fix later.
+
+                            Console.SetCursorPosition(0, context.startingCursor + context.displayLines.Count);
+                            for (int i = 0; i < endBuffer; i++) Console.WriteLine(new string(' ', Console.WindowWidth));
                             break;
 
                         case VkvModifySelection.Name:
@@ -293,7 +314,7 @@ public static class VkvModule
 
     private static void VkvModifyRefactorName(ref string nodeName, ref VkvModifyContext context)
     {
-        string originalName = new(nodeName);
+        string originalName = nodeName;
         string edit = context.displayLines[context.lineIndex];
 
         int firstQuote = edit.IndexOf('\"'),
@@ -390,17 +411,114 @@ public static class VkvModule
     }
     private static void VkvModifyRefactorValue(ref VkvSingleNode node, ref VkvModifyContext context)
     {
-        
+        string value = node.value?.ToString() ?? string.Empty,
+               edit = context.displayLines[context.lineIndex];
+
+        int firstQuote = edit.IndexOf('\"'),
+            secondQuote = edit[(firstQuote + 1)..].IndexOf('\"') + firstQuote + 1,
+            thirdQuote = edit[(secondQuote + 1)..].IndexOf('\"') + secondQuote + 1,
+            fourthQuote = edit[(thirdQuote + 1)..].IndexOf('\"') + thirdQuote + 1;
+
+        int displayIndex = fourthQuote, valueIndex = value.Length;
+
+        int additionalAnsiTakeoff = 0;
+
+        {
+            // See my opinions of brackets while already
+            // inside a method in the `VkvModifyRefactorName`
+            // method.
+            bool tempActive = false;
+            for (int i = 0; i < displayIndex; i++)
+            {
+                if (edit[i] == '\x1b') tempActive = true;
+                if (tempActive) additionalAnsiTakeoff++;
+                if (tempActive && edit[i] == 'm') tempActive = false;
+            }
+        }
+
+        while (true)
+        {
+            Console.CursorLeft = 0;
+            Console.Write(Whitify(edit, VkvModifySelection.Value, true));
+
+            Console.CursorLeft = displayIndex - additionalAnsiTakeoff;
+            Console.CursorVisible = true;
+            ConsoleKeyInfo key = Console.ReadKey(true);
+            Console.CursorVisible = false;
+            if (char.IsControl(key.KeyChar))
+            {
+                // TODO: Adding clipboard support might be cool (but also a pain).
+                bool end = false;
+                switch (key.Key)
+                {
+                    case ConsoleKey.Backspace:
+                        if (valueIndex > 0)
+                        {
+                            value = value.Remove(valueIndex - 1, 1);
+                            edit = edit.Remove(displayIndex - 1, 1) + ' ';
+                            displayIndex--;
+                            valueIndex--;
+                        }
+                        break;
+
+                    case ConsoleKey.Delete:
+                        if (valueIndex < value.Length)
+                        {
+                            value = value.Remove(valueIndex, 1);
+                            edit = edit.Remove(displayIndex, 1) + ' ';
+                        }
+                        break;
+
+                    case ConsoleKey.Escape:
+                        edit = context.displayLines[context.lineIndex];
+                        end = true;
+                        break;
+
+                    case ConsoleKey.Enter:
+                        node.value = value;
+                        end = true;
+                        break;
+
+                    case ConsoleKey.LeftArrow:
+                        if (valueIndex > 0)
+                        {
+                            displayIndex--;
+                            valueIndex--;
+                        }
+                        break;
+
+                    case ConsoleKey.RightArrow:
+                        if (valueIndex < value.Length)
+                        {
+                            displayIndex++;
+                            valueIndex++;
+                        }
+                        break;
+                }
+                if (end) break;
+            }
+            else
+            {
+                value = value.Insert(valueIndex, key.KeyChar.ToString());
+                edit = edit.Insert(displayIndex, key.KeyChar.ToString()).TrimEnd();
+                displayIndex++;
+                valueIndex++;
+            }
+        }
+
+        context.displayLines[context.lineIndex] = edit.TrimEnd();
     }
 
-    private static void VkvModifyPrintAll(ref VkvModifyContext context, bool resetCursor)
+    private static void VkvModifyPrintAll(ref VkvModifyContext context, bool resetCursor, bool flushLine = false)
     {
         Int2 cursorPos = (Console.CursorLeft, Console.CursorTop);
 
         Console.SetCursorPosition(0, context.startingCursor);
         foreach (string line in context.displayLines)
         {
-            Console.WriteLine(line);
+            Console.Write(line);
+            if (flushLine) Console.Write(new string(' ', Console.WindowWidth - line.Length));
+            Console.WriteLine();
             Console.ResetColor();
         }
 
@@ -515,6 +633,8 @@ public static class VkvModule
     {
         public required List<string> displayLines;
         public int lineIndex;
+        public required VkvNode rootNode;
+        public required string rootNodeName;
         public readonly int startingCursor;
 
         public VkvModifyContext()

@@ -127,4 +127,40 @@ public class VkvTreeNode : VkvNode, IEnumerable<KeyValuePair<string, VkvNode>>
             yield return new(p_subNodeKeys[i], p_subNodes[i]);
         }
     }
+
+    public void Remove(string key)
+    {
+        int index = p_subNodeKeys.IndexOf(key);
+        if (index == -1) return;
+
+        p_subNodeKeys.RemoveAt(index);
+        p_subNodes.RemoveAt(index);
+    }
+    public void Remove(VkvNode value)
+    {
+        int index = p_subNodes.IndexOf(value);
+        if (index == -1) return;
+
+        p_subNodeKeys.RemoveAt(index);
+        p_subNodes.RemoveAt(index);
+    }
+
+    public void RemoveAll(string key)
+    {
+        int index;
+        while ((index = p_subNodeKeys.IndexOf(key)) != -1)
+        {
+            p_subNodeKeys.RemoveAt(index);
+            p_subNodes.RemoveAt(index);
+        }
+    }
+    public void RemoveAll(VkvNode value)
+    {
+        int index;
+        while ((index = p_subNodes.IndexOf(value)) != -1)
+        {
+            p_subNodeKeys.RemoveAt(index);
+            p_subNodes.RemoveAt(index);
+        }
+    }
 }
